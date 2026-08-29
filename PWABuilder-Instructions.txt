@@ -1,0 +1,18 @@
+
+# For PWABuilder.com - DO NOT DELETE THESE FILES
+
+## How to build APK on PWABuilder:
+
+1. Upload this folder to GitHub
+2. Enable GitHub Pages (Settings > Pages > main / root)
+3. Copy your GitHub Pages URL: https://YOURNAME.github.io/YOURREPO/
+4. Go to https://www.pwabuilder.com
+5. Paste your URL
+6. Click "Start" - it will score your PWA
+7. Click "Build My PWA" > Android > Generate Package
+8. Download your APK / AAB!
+
+Your PWA must be on HTTPS (GitHub Pages is HTTPS) or PWABuilder will fail.
+
+If Chrome still shows "Shortcut" only, it's because you opened file:// directly.
+You MUST open it via https:// URL for Install to work.
