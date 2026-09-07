@@ -2214,75 +2214,284 @@
       }
     }
 
-    @media (max-width: 768px) {
-      :root { --page-pad: 10px; }
+    /* Phone: hide desktop-only bits; show mobile controls */
+    .mobile-only { display: none !important; }
+    .mobile-sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      z-index: 199;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+    }
 
-      body { padding: var(--page-pad); }
+    @media (max-width: 768px) {
+      :root { --page-pad: 8px; --touch-min: 44px; }
+
+      body { padding: var(--page-pad); padding-bottom: max(var(--page-pad), env(safe-area-inset-bottom)); }
+
+      .mobile-only { display: inline-flex !important; }
 
       header {
-        padding: 12px 14px;
-        gap: 10px;
-        margin-bottom: 12px;
+        padding: 10px 12px;
+        gap: 8px;
+        margin-bottom: 8px;
         position: relative;
+        overflow: hidden;
+        max-width: 100%;
+        box-sizing: border-box;
       }
 
+      header > div:first-child {
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+      }
+
+      /* Scrolling title on phone — clipped inside the header (no text sticking outside) */
       header h1 {
-        font-size: 1.1rem;
+        font-size: 1.05rem;
+        max-width: 100% !important;
+        width: 100%;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+        line-height: 1.35;
+        position: relative;
+        mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%) !important;
+        -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%) !important;
+      }
+      header h1 .title-marquee-track {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 2.5rem !important;
+        width: max-content !important;
+        max-width: none !important;
+        animation: titleScrollRtl 16s linear infinite !important;
+        will-change: transform;
+      }
+      header h1 .title-marquee-item {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+        white-space: nowrap !important;
+      }
+      header h1 .title-marquee-item[aria-hidden="true"] {
+        display: inline-flex !important;
+      }
+
+      .produced-by {
+        font-size: 0.65rem;
+        word-break: break-word;
+        max-width: 100%;
       }
 
       .header-meta {
-        font-size: 0.78rem;
+        font-size: 0.68rem;
+        line-height: 1.4;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        max-width: 100%;
+        display: -webkit-box;
+        -webkit-line-clamp: 4;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .save-status {
+        font-size: 0.68rem;
+        max-width: 100%;
       }
 
       .header-actions {
         width: 100%;
         gap: 6px;
+        align-items: stretch;
       }
 
+      /* Primary row: Setup + main actions */
       .header-actions .btn,
-      .header-actions button {
-        flex: 1 1 auto;
+      .header-actions button,
+      .header-actions label.print-style-opt {
+        flex: 1 1 calc(50% - 6px);
         min-height: var(--touch-min);
         justify-content: center;
-        padding: 10px 12px;
-        font-size: 0.8rem;
+        padding: 8px 10px;
+        font-size: 0.78rem;
+      }
+
+      .header-actions label.print-style-opt select,
+      .header-actions #printBatchSelect {
+        width: 100%;
+        min-height: var(--touch-min);
+        font-size: 0.78rem;
+      }
+
+      /* Secondary tools collapsed behind "More" */
+      body:not(.mobile-more-open) .header-actions .btn-mobile-secondary {
+        display: none !important;
+      }
+      body.mobile-more-open .header-actions .btn-mobile-secondary {
+        display: inline-flex !important;
+      }
+
+      /* Sidebar as full-height drawer (display toggle — more reliable in Android WebViews) */
+      .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: auto !important;
+        bottom: 0 !important;
+        width: 88% !important;
+        max-width: 320px !important;
+        height: 100% !important;
+        height: 100dvh !important;
+        z-index: 10050 !important;
+        display: none !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        align-items: stretch !important;
+        align-content: flex-start !important;
+        gap: 10px !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        background: #f8fafc !important;
+        box-shadow: 8px 0 32px rgba(15, 23, 42, 0.28);
+        padding: 12px 12px 24px !important;
+        padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        border-right: 1px solid #e2e8f0;
+        box-sizing: border-box !important;
+      }
+      body.mobile-sidebar-open {
+        overflow: hidden !important;
+      }
+      body.mobile-sidebar-open .sidebar {
+        display: flex !important;
+      }
+      .mobile-sidebar-backdrop {
+        z-index: 10040 !important;
+        background: rgba(15, 23, 42, 0.5) !important;
+      }
+      body.mobile-sidebar-open .mobile-sidebar-backdrop {
+        display: block !important;
+      }
+      .sidebar .card {
+        min-width: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+        flex: 0 0 auto !important;
+        background: #fff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      }
+      .sidebar .collapsible-card.collapsed,
+      .sidebar .collapsible-card:not(.collapsed),
+      #subjectsCard:not(.collapsed),
+      #examSlotsCard:not(.collapsed),
+      #conflictsCard {
+        min-width: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+      }
+      .sidebar .item-list {
+        max-height: 40vh !important;
+      }
+      .sidebar-mobile-head.mobile-only {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 4px 12px;
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 6px;
+        width: 100%;
+        flex: 0 0 auto;
+        background: #f8fafc;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
+      .sidebar-mobile-head strong {
+        font-size: 1rem;
+        color: #0f172a;
       }
 
       .view-tabs {
-        padding: 5px 6px;
+        padding: 4px;
         gap: 4px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         flex-wrap: nowrap;
         top: 0;
+        position: sticky;
+        z-index: 80;
+        max-width: 100%;
+        box-sizing: border-box;
       }
 
       .view-tab {
-        padding: 6px 10px;
+        padding: 8px 11px;
         font-size: 0.72rem;
         white-space: nowrap;
         flex-shrink: 0;
-        min-height: 0;
+        min-height: 40px;
+        border-radius: 999px;
+        max-width: none;
+      }
+
+      .view-title {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        white-space: normal !important;
+      }
+
+      .toolbar {
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: auto;
+      }
+
+      .app {
+        max-width: 100%;
+        overflow-x: hidden;
       }
 
       .view-controls {
-        width: auto;
-        margin-left: auto;
-        margin-top: 0;
-        gap: 4px;
-        flex-wrap: nowrap;
+        width: 100%;
+        margin-left: 0;
+        margin-top: 4px;
+        gap: 6px;
+        flex-wrap: wrap;
+        order: 5;
       }
 
       .view-controls select,
-      .view-controls .searchable-select {
-        min-width: 80px !important;
-        max-width: 110px !important;
-        flex: 0 0 auto;
+      .view-controls .searchable-select,
+      .view-controls .combo-box,
+      .view-controls .teacher-combo {
+        min-width: 0 !important;
+        max-width: none !important;
+        flex: 1 1 140px;
         width: auto;
       }
+      .view-controls .combo-input {
+        min-height: 40px;
+        font-size: 16px;
+      }
+      .view-controls .btn {
+        min-height: 40px;
+      }
 
-      .layout { gap: 12px; }
+      .layout { gap: 8px; display: block; }
 
       .card {
         padding: 12px;
@@ -2294,49 +2503,65 @@
       }
 
       .item-list {
-        max-height: 180px;
+        max-height: 220px;
       }
 
       .toolbar {
-        padding: 5px 6px;
-        gap: 5px;
-        flex-wrap: nowrap;
+        padding: 6px 8px;
+        gap: 6px;
+        flex-wrap: wrap;
+        align-items: center;
       }
 
       .view-title {
-        font-size: 0.72rem;
-        width: auto;
+        font-size: 0.78rem;
+        width: 100%;
+        order: -1;
+        line-height: 1.35;
       }
 
       .zoom-controls button {
-        width: 24px;
-        height: 24px;
-        font-size: 0.8rem !important;
+        width: 40px;
+        height: 40px;
+        min-width: var(--touch-min);
+        min-height: var(--touch-min);
+        font-size: 0.9rem !important;
       }
 
       .legend {
-        font-size: 0.65rem;
+        font-size: 0.68rem;
         gap: 6px;
+        width: 100%;
       }
 
       .timetable-wrapper {
-        padding: 8px;
-        max-height: calc(100vh - 64px);
-        max-height: calc(100dvh - 64px);
-        /* Allow horizontal and vertical scroll when grid is larger than viewport */
+        padding: 6px;
+        max-height: calc(100dvh - 120px);
         overflow-x: auto;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+        border-radius: 10px;
       }
 
       table.timetable {
-        min-width: 640px;
+        min-width: 560px;
+        font-size: 0.72rem;
       }
 
       table.timetable th.period-col,
       table.timetable td.slot {
-        min-width: 96px;
+        min-width: 88px;
+        padding: 4px;
       }
+
+      .entry {
+        padding: 4px 5px;
+        font-size: 0.7rem;
+      }
+      .entry .entry-subj { font-size: 0.72rem; }
+      .entry .entry-teacher,
+      .entry .entry-class,
+      .entry .entry-room { font-size: 0.62rem; }
 
       .modal-overlay {
         align-items: flex-end;
@@ -2373,18 +2598,6 @@
         right: 12px;
         bottom: max(12px, env(safe-area-inset-bottom));
         text-align: center;
-      }
-
-      .legend {
-        font-size: 0.72rem;
-        gap: 8px;
-      }
-
-      .zoom-controls button {
-        width: 40px;
-        height: 40px;
-        min-width: var(--touch-min);
-        min-height: var(--touch-min);
       }
 
       input[type="text"],
@@ -2626,6 +2839,81 @@
       .print-page-footer,
       #printMeta {
         display: none !important;
+      }
+
+      /* Batch print: hide app, show multi-page sections */
+      body.print-batch .app {
+        display: none !important;
+      }
+      body.print-batch #printBatchRoot {
+        display: block !important;
+        position: static !important;
+        width: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      body.print-batch .print-batch-section {
+        page-break-after: always;
+        break-after: page;
+        margin: 0 0 8mm 0;
+      }
+      body.print-batch .print-batch-section:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+      body.print-batch .print-batch-school {
+        font-size: 14pt;
+        font-weight: 800;
+        color: #000 !important;
+        margin: 0 0 2px 0;
+        text-align: center;
+        line-height: 1.25;
+      }
+      body.print-batch .print-batch-session {
+        font-size: 11pt;
+        font-weight: 800;
+        color: #000 !important;
+        margin: 0 0 4px 0;
+        text-align: center;
+        line-height: 1.25;
+      }
+      body.print-batch .print-batch-sub {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        width: 100%;
+        font-size: 13pt;
+        font-weight: 800;
+        color: #000 !important;
+        margin: 0 0 8px 0;
+        box-sizing: border-box;
+      }
+      body.print-batch .print-batch-heading {
+        font-size: 13pt;
+        font-weight: 800;
+        color: #000 !important;
+        text-align: left;
+        flex: 1 1 auto;
+        line-height: 1.25;
+        margin: 0;
+      }
+      body.print-batch .print-batch-periods {
+        font-size: 13pt;
+        font-weight: 800;
+        color: #000 !important;
+        text-align: right;
+        flex: 0 0 auto;
+        margin-left: auto;
+      }
+      body.print-batch .print-batch-section table.timetable {
+        width: 100% !important;
+        table-layout: fixed !important;
+        font-size: 8pt !important;
+      }
+      body.print-batch .print-batch-section table.timetable th,
+      body.print-batch .print-batch-section table.timetable td {
+        padding: 2px 3px !important;
       }
 
       .app { max-width: none !important; margin: 0 !important; }
@@ -3557,25 +3845,40 @@
         <div id="printMeta" style="display:none;" aria-hidden="true"></div>
       </div>
       <div class="header-actions">
+        <button type="button" class="btn btn-secondary mobile-only no-print" id="btnMobileSetup" onclick="toggleMobileSidebar()" title="Open classes, subjects &amp; settings">☰ Setup</button>
         <button class="btn btn-primary" onclick="openAutoGenModal()">✨ Autogenerate</button>
-        <button class="btn btn-danger btn-sm" onclick="clearAutoGenerated()" title="Clear only autogenerated periods, keep manually added" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;">🧹 Clear Auto</button>
-        <button class="btn btn-primary" onclick="autoGenerateExamTimetable()" title="Generate CA/Exam timetable with invigilators & supervisors">📝 Auto Exam/CA</button>
-        <label class="print-style-opt no-print" title="Subjects on printed page: color boxes or plain black text">
+        <button class="btn btn-secondary" onclick="printTimetable()" title="Print the current view">🖨️ Print</button>
+        <button type="button" class="btn btn-secondary mobile-only no-print" id="btnMobileMore" onclick="toggleMobileMore()" title="Show more tools">⋯ More</button>
+        <button class="btn btn-danger btn-sm btn-mobile-secondary" onclick="clearAutoGenerated()" title="Clear only autogenerated periods, keep manually added" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;">🧹 Clear Auto</button>
+        <button class="btn btn-primary btn-mobile-secondary" onclick="autoGenerateExamTimetable()" title="Generate CA/Exam timetable with invigilators & supervisors">📝 Auto Exam/CA</button>
+        <label class="print-style-opt no-print btn-mobile-secondary" title="Subjects on printed page: color boxes or plain black text">
           <select id="printSubjectStyle" onchange="onPrintSubjectStyleChange(this.value)" aria-label="Print subject style">
             <option value="color">Print: color boxes</option>
             <option value="plain">Print: plain text</option>
           </select>
         </label>
-        <button class="btn btn-secondary" onclick="printTimetable()">🖨️ Print</button>
-        <button class="btn btn-secondary" onclick="exportJSON()">⬇️ Export</button>
-        <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">⬆️ Import</button>
+        <label class="print-style-opt no-print btn-mobile-secondary" title="Print many timetables in one job">
+          <select id="printBatchSelect" onchange="onPrintBatchSelect(this.value)" aria-label="Batch print">
+            <option value="">🖨️ Batch…</option>
+            <option value="classes">Print all class timetables</option>
+            <option value="teachers">Print all teacher timetables</option>
+          </select>
+        </label>
+        <button class="btn btn-secondary btn-mobile-secondary" onclick="exportJSON()">⬇️ Export JSON</button>
+        <button class="btn btn-secondary btn-mobile-secondary" onclick="document.getElementById('importFile').click()">⬆️ Import</button>
         <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)" />
-        <button type="button" class="btn btn-secondary" id="btnUndo" onclick="undo()" disabled title="Undo (Ctrl+Z)">↩️ Undo</button>
-        <button type="button" class="btn btn-secondary" id="btnRedo" onclick="redo()" disabled title="Redo (Ctrl+Y)">↪️ Redo</button>
+        <button type="button" class="btn btn-secondary btn-mobile-secondary" id="btnUndo" onclick="undo()" disabled title="Undo (Ctrl+Z)">↩️ Undo</button>
+        <button type="button" class="btn btn-secondary btn-mobile-secondary" id="btnRedo" onclick="redo()" disabled title="Redo (Ctrl+Y)">↪️ Redo</button>
       </div>
     </header>
 
+    <button type="button" class="mobile-sidebar-backdrop no-print" id="mobileSidebarBackdrop" onclick="closeMobileSidebar()" aria-label="Close setup panel"></button>
+
     <aside class="sidebar no-print" id="topSidebar">
+        <div class="sidebar-mobile-head mobile-only no-print">
+          <strong>📋 Setup</strong>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeMobileSidebar()">✕ Close</button>
+        </div>
         <div class="card collapsible-card collapsed" id="settingsCard">
           <h2 class="collapsible-head" onclick="toggleSidebarCard('settingsCard')" title="Expand / collapse">
             <span>⚙️ Settings</span>
@@ -4083,6 +4386,8 @@
   </div>
 
   <div class="print-page-footer" id="printPageFooter" style="display:none;" aria-hidden="true"></div>
+  <!-- Off-screen multi-page print root (all classes / all teachers) -->
+  <div id="printBatchRoot" style="display:none;" aria-hidden="true"></div>
 
   <div id="moveHintTip" role="tooltip" aria-hidden="true"></div>
   <div id="autosaveFlash" aria-live="polite" aria-atomic="true">✓ Autosaved</div>
@@ -4281,6 +4586,79 @@
         }, 15000);
       }
       if (typeof updateDirtyIndicator === 'function') updateDirtyIndicator();
+      if (typeof initMobileLayout === 'function') initMobileLayout();
+    }
+
+    function isMobileLayout() {
+      return window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    function toggleMobileSidebar() {
+      // Prefer matchMedia, but always allow if Setup button is visible (some WebViews differ)
+      const setupBtn = document.getElementById('btnMobileSetup');
+      const mobileUi = isMobileLayout() || (setupBtn && window.getComputedStyle(setupBtn).display !== 'none');
+      if (!mobileUi) return;
+      const opening = !document.body.classList.contains('mobile-sidebar-open');
+      document.body.classList.toggle('mobile-sidebar-open', opening);
+      document.body.classList.remove('mobile-more-open');
+      const btn = document.getElementById('btnMobileMore');
+      if (btn) btn.textContent = '⋯ More';
+      if (opening) {
+        // Expand Classes + Subjects so the drawer is not a blank wall of collapsed headers
+        ['classesCard', 'subjectsCard', 'settingsCard'].forEach(function (id) {
+          const card = document.getElementById(id);
+          if (card && card.classList.contains('collapsed')) {
+            card.classList.remove('collapsed');
+          }
+        });
+        const side = document.getElementById('topSidebar');
+        if (side) {
+          try { side.scrollTop = 0; } catch (e) {}
+        }
+      }
+    }
+
+    function closeMobileSidebar() {
+      document.body.classList.remove('mobile-sidebar-open');
+    }
+
+    function toggleMobileMore() {
+      document.body.classList.toggle('mobile-more-open');
+      const open = document.body.classList.contains('mobile-more-open');
+      const btn = document.getElementById('btnMobileMore');
+      if (btn) btn.textContent = open ? '⋯ Less' : '⋯ More';
+    }
+
+    function initMobileLayout() {
+      // Close drawer when switching main views on phone
+      document.querySelectorAll('.view-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          if (isMobileLayout()) closeMobileSidebar();
+        });
+      });
+      // Escape closes drawer / more panel
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          closeMobileSidebar();
+          document.body.classList.remove('mobile-more-open');
+          const btn = document.getElementById('btnMobileMore');
+          if (btn) btn.textContent = '⋯ More';
+        }
+      });
+      // When resizing to desktop, clear mobile-only body classes
+      if (window.matchMedia) {
+        const mq = window.matchMedia('(max-width: 768px)');
+        const onChange = function () {
+          if (!mq.matches) {
+            closeMobileSidebar();
+            document.body.classList.remove('mobile-more-open');
+            const btn = document.getElementById('btnMobileMore');
+            if (btn) btn.textContent = '⋯ More';
+          }
+        };
+        if (mq.addEventListener) mq.addEventListener('change', onChange);
+        else if (mq.addListener) mq.addListener(onChange);
+      }
     }
 
     function updateMeta() {
@@ -4293,8 +4671,17 @@
       const b = state.slots.filter(x => x.isBreak).length;
       const ep = (state.examSlots || []).filter(x => !x.isBreak).length;
       const eb = (state.examSlots || []).filter(x => x.isBreak).length;
-      let meta = state.schoolName + ' · ' + c + ' classes · ' + s + ' subjects · ' + p + ' periods · ' + b + ' breaks · Exam: ' + ep + ' sessions / ' + eb + ' breaks';
-      if (state.session) meta = state.schoolName + ' · ' + state.session + ' · ' + c + ' classes · ' + s + ' subjects · ' + p + ' periods · ' + b + ' breaks · Exam: ' + ep + ' sessions / ' + eb + ' breaks';
+      let meta;
+      const mobile = typeof isMobileLayout === 'function' && isMobileLayout();
+      if (mobile) {
+        // Shorter line so text stays inside the phone header
+        meta = (state.schoolName || 'My School') +
+          (state.session ? ' · ' + state.session : '') +
+          ' · ' + c + ' classes · ' + s + ' subjects · ' + p + ' periods';
+      } else {
+        meta = state.schoolName + ' · ' + c + ' classes · ' + s + ' subjects · ' + p + ' periods · ' + b + ' breaks · Exam: ' + ep + ' sessions / ' + eb + ' breaks';
+        if (state.session) meta = state.schoolName + ' · ' + state.session + ' · ' + c + ' classes · ' + s + ' subjects · ' + p + ' periods · ' + b + ' breaks · Exam: ' + ep + ' sessions / ' + eb + ' breaks';
+      }
       document.getElementById('headerMeta').textContent = meta;
       // Settings fields also autosave immediately
       if (typeof autosaveNow === 'function' && !historyQuiet) autosaveNow();
@@ -6235,6 +6622,7 @@ function switchView(view) {
       list.innerHTML = state.classes.map(c =>
         '<div class="list-item"><div class="name">' + escapeHtml(c.name) + '</div>' +
         '<button class="icon-btn" onclick="editClass(\'' + c.id + '\')" title="Edit">✏️</button>' +
+        '<button class="icon-btn" onclick="duplicateClass(\'' + c.id + '\')" title="Duplicate class">📄</button>' +
         '<button class="icon-btn" onclick="deleteClass(\'' + c.id + '\')" title="Delete">🗑️</button></div>'
       ).join('');
     }
@@ -6279,6 +6667,78 @@ function switchView(view) {
     }
 
     function editClass(id) { openClassModal(id); }
+
+    /** Unique class name based on a base (adds " (copy)", " (copy 2)", …). */
+    function uniqueClassName(base) {
+      const names = new Set((state.classes || []).map(c => (c.name || '').toLowerCase().trim()));
+      let name = (base || 'Class').trim() || 'Class';
+      if (!names.has(name.toLowerCase())) return name;
+      let n = 1;
+      while (names.has((name + ' (copy' + (n === 1 ? '' : ' ' + n) + ')').toLowerCase())) n++;
+      return name + ' (copy' + (n === 1 ? '' : ' ' + n) + ')';
+    }
+
+    /**
+     * Duplicate a class arm: same weekly subject loads.
+     * Optionally copy placed periods from the source class.
+     */
+    function duplicateClass(id) {
+      const src = state.classes.find(x => x.id === id);
+      if (!src) { showToast('Class not found'); return; }
+      const newName = uniqueClassName(src.name);
+      const copyTimetable = confirm(
+        'Duplicate class "' + src.name + '" as "' + newName + '"?\n\n' +
+        'OK = Also copy its placed periods to the new class\n' +
+        'Cancel = Only copy the class + weekly subject loads (empty timetable)'
+      );
+      // Note: Cancel still duplicates class without periods — use a second pattern via confirm is awkward.
+      // Better: always create class; ask explicitly about periods.
+      const newId = 'c' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      state.classes.push({ id: newId, name: newName });
+
+      // Copy weekly loads from source class onto the new class for every subject
+      (state.subjects || []).forEach(s => {
+        if (!s.weeklyByClass) s.weeklyByClass = getWeeklyMap(s);
+        const srcLoad = s.weeklyByClass[id];
+        if (srcLoad != null) s.weeklyByClass[newId] = srcLoad;
+        else if (s.weeklyByClass[newId] == null) s.weeklyByClass[newId] = 0;
+      });
+
+      let copiedPeriods = 0;
+      if (copyTimetable) {
+        const clones = (state.assignments || [])
+          .filter(a => a.classId === id)
+          .map(a => {
+            copiedPeriods++;
+            return {
+              id: 'a' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '_' + copiedPeriods,
+              day: a.day,
+              slotId: a.slotId,
+              classId: newId,
+              subjectId: a.subjectId,
+              grouped: a.grouped,
+              groupName: a.groupName,
+              autoGenerated: !!a.autoGenerated,
+              locked: false
+            };
+          });
+        state.assignments = (state.assignments || []).concat(clones);
+      }
+
+      renderClasses();
+      renderSubjects();
+      updateMeta();
+      updateConflicts();
+      renderTable();
+      if (state.currentView === 'class') switchView('class');
+      showToast(
+        'Duplicated "' + src.name + '" → "' + newName + '"' +
+        (copiedPeriods ? (' · ' + copiedPeriods + ' period(s) copied') : ' · empty timetable')
+      );
+      pushHistory();
+      // Offer rename immediately
+      openClassModal(newId);
+    }
 
     function deleteClass(id) {
       const c = state.classes.find(x => x.id === id);
@@ -6343,6 +6803,7 @@ function switchView(view) {
             totalLine +
           '</div>' +
           '<button class="icon-btn" onclick="editSubject(\'' + s.id + '\')" title="Edit">✏️</button>' +
+          '<button class="icon-btn" onclick="duplicateSubject(\'' + s.id + '\')" title="Duplicate subject">📄</button>' +
           '<button class="icon-btn" onclick="deleteSubject(\'' + s.id + '\')" title="Delete">🗑️</button></div>';
       }).join('');
       renderSubjectLoad();
@@ -6572,6 +7033,63 @@ function switchView(view) {
     }
 
     function editSubject(id) { openSubjectModal(id); }
+
+    function uniqueSubjectLabel(name, teacher) {
+      const base = (name || 'Subject').trim() || 'Subject';
+      const t = (teacher || '').trim();
+      const exists = function (n) {
+        return (state.subjects || []).some(s =>
+          normalizeSubjectName(s.name) === normalizeSubjectName(n) &&
+          normalizeTeacherName(s.teacher) === normalizeTeacherName(t)
+        );
+      };
+      if (!exists(base)) return base;
+      let n = 1;
+      let candidate;
+      do {
+        candidate = base + ' (copy' + (n === 1 ? '' : ' ' + n) + ')';
+        n++;
+      } while (exists(candidate));
+      return candidate;
+    }
+
+    /**
+     * Duplicate subject: same teacher, room, color, weekly loads; new id.
+     * Does not copy placed periods (avoids instant double-booking).
+     */
+    function duplicateSubject(id) {
+      const src = state.subjects.find(x => x.id === id);
+      if (!src) { showToast('Subject not found'); return; }
+      const newName = uniqueSubjectLabel(src.name, src.teacher);
+      const weeklyByClass = {};
+      const map = getWeeklyMap(src);
+      Object.keys(map).forEach(cid => {
+        weeklyByClass[cid] = map[cid];
+      });
+      // Pick a nearby color if possible
+      let color = src.color || COLORS[0];
+      const used = new Set((state.subjects || []).map(s => s.color));
+      const free = COLORS.find(c => !used.has(c));
+      if (free) color = free;
+
+      const newId = 's' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      state.subjects.push({
+        id: newId,
+        name: newName,
+        teacher: src.teacher || '',
+        room: src.room || '',
+        color: color,
+        weeklyByClass: weeklyByClass
+      });
+
+      renderSubjects();
+      renderSubjectLoad();
+      updateMeta();
+      if (state.currentView === 'teacher') switchView('teacher');
+      showToast('Duplicated subject → "' + newName + '" · edit teacher/loads if needed');
+      pushHistory();
+      openSubjectModal(newId);
+    }
 
     function deleteSubject(id) {
       if (!confirm('Delete this subject and remove it from all slots?')) return;
@@ -12784,6 +13302,170 @@ function switchView(view) {
       const sel = document.getElementById('printSubjectStyle');
       if (!sel) return;
       sel.value = (state.printSubjectStyle === 'plain') ? 'plain' : 'color';
+    }
+
+    function onPrintBatchSelect(value) {
+      const sel = document.getElementById('printBatchSelect');
+      if (sel) sel.value = '';
+      if (!value) return;
+      if (value === 'classes') printBatch('classes');
+      else if (value === 'teachers') printBatch('teachers');
+    }
+
+    /**
+     * Print every class timetable or every teacher timetable in one print job
+     * (each on its own page).
+     */
+    function printBatch(kind) {
+      const isClasses = kind === 'classes';
+      const list = isClasses
+        ? (state.classes || []).slice()
+        : ((typeof getUniqueTeachers === 'function') ? getUniqueTeachers() : []);
+      if (!list.length) {
+        showToast(isClasses ? 'Add classes first' : 'No teachers found — add subjects with teachers');
+        return;
+      }
+      if (!state.slots || !state.slots.filter(s => !s.isBreak).length) {
+        showToast('Add teaching periods first');
+        return;
+      }
+      const label = isClasses ? (list.length + ' class timetable' + (list.length > 1 ? 's' : ''))
+        : (list.length + ' teacher timetable' + (list.length > 1 ? 's' : ''));
+      if (!confirm('Print all ' + label + ' in one job?\n\nEach timetable will start on a new page.\n\nOK = Continue to print dialog\nCancel = Abort')) {
+        return;
+      }
+
+      const root = document.getElementById('printBatchRoot');
+      if (!root) {
+        showToast('Print batch container missing');
+        return;
+      }
+
+      const prevView = state.currentView;
+      const prevClass = state.selectedClassId;
+      const prevTeacher = state.selectedTeacher;
+      const prevZoom = state.zoom;
+      state.zoom = 1;
+      if (typeof applyZoom === 'function') applyZoom();
+
+      // Ensure indexes for fast multi-render
+      if (typeof invalidateLookupCaches === 'function') invalidateLookupCaches();
+      if (typeof buildAssignmentIndex === 'function') {
+        window._assignIndex = buildAssignmentIndex();
+      }
+      window._subjectMap = {};
+      (state.subjects || []).forEach(s => { window._subjectMap[s.id] = s; });
+      window._classMap = {};
+      (state.classes || []).forEach(c => { window._classMap[c.id] = c; });
+      if (typeof getTeacherClashes === 'function' && typeof buildClashIdSet === 'function') {
+        window._clashIdSet = buildClashIdSet(getTeacherClashes());
+      }
+
+      state.currentView = isClasses ? 'class' : 'teacher';
+      root.innerHTML = '';
+      root.setAttribute('aria-hidden', 'false');
+
+      const school = state.schoolName || 'My School';
+      const session = (state.session || '').trim();
+
+      list.forEach((item) => {
+        if (isClasses) {
+          state.selectedClassId = item.id;
+          state.selectedTeacher = null;
+        } else {
+          state.selectedTeacher = item;
+          state.selectedClassId = null;
+        }
+
+        const section = document.createElement('div');
+        section.className = 'print-batch-section';
+
+        // 1) School name (bold, top, center)
+        const schoolEl = document.createElement('div');
+        schoolEl.className = 'print-batch-school';
+        schoolEl.textContent = school;
+        section.appendChild(schoolEl);
+
+        // 2) Session under school name (bold, center)
+        if (session) {
+          const sessEl = document.createElement('div');
+          sessEl.className = 'print-batch-session';
+          sessEl.textContent = session;
+          section.appendChild(sessEl);
+        }
+
+        // 3) Class/teacher on the left + period totals on the right
+        const sub = document.createElement('div');
+        sub.className = 'print-batch-sub';
+
+        const heading = document.createElement('span');
+        heading.className = 'print-batch-heading';
+        if (isClasses) {
+          heading.textContent = 'Class Timetable — ' + (item.name || 'Class');
+        } else {
+          heading.textContent = 'Teacher Timetable — ' + item;
+        }
+        sub.appendChild(heading);
+
+        let loadText = '';
+        if (isClasses) {
+          const load = (typeof getClassPeriodTotals === 'function') ? getClassPeriodTotals(item.id) : null;
+          if (load) loadText = load.placed + '/' + load.expected + ' periods';
+        } else {
+          const load = (typeof getTeacherPeriodTotals === 'function') ? getTeacherPeriodTotals(item) : null;
+          if (load) {
+            const n = load.cellPlaced || 0;
+            loadText = n + (n === 1 ? ' period' : ' periods');
+          }
+        }
+        if (loadText) {
+          const perEl = document.createElement('span');
+          perEl.className = 'print-batch-periods';
+          perEl.textContent = loadText;
+          sub.appendChild(perEl);
+        }
+        section.appendChild(sub);
+
+        const table = document.createElement('table');
+        table.className = 'timetable';
+        if (typeof renderTableInto === 'function') {
+          renderTableInto(table, { noEmptyUi: true });
+        }
+        section.appendChild(table);
+        root.appendChild(section);
+      });
+
+      // Restore live view state (screen still shows previous selection after print)
+      state.currentView = prevView;
+      state.selectedClassId = prevClass;
+      state.selectedTeacher = prevTeacher;
+
+      document.body.classList.remove('print-single-timetable', 'print-school-timetable', 'print-compare', 'print-plain-subjects', 'print-batch');
+      document.body.classList.add('print-batch', 'print-single-timetable');
+      if (state.printSubjectStyle === 'plain') {
+        document.body.classList.add('print-plain-subjects');
+      }
+      // Allow @media print rule to show the batch root
+      root.style.display = '';
+
+      showToast('Preparing ' + label + '…');
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.print();
+          setTimeout(() => {
+            document.body.classList.remove('print-batch', 'print-single-timetable', 'print-plain-subjects');
+            root.innerHTML = '';
+            root.style.display = 'none';
+            root.setAttribute('aria-hidden', 'true');
+            state.zoom = prevZoom;
+            if (typeof applyZoom === 'function') applyZoom();
+            if (typeof renderTable === 'function') renderTable();
+            if (typeof updateMeta === 'function') updateMeta();
+            showToast('Batch print finished');
+          }, 400);
+        });
+      });
     }
 
     function printTimetable() {
