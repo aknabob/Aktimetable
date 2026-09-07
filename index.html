@@ -4179,27 +4179,62 @@
       <div id="examExisting" style="margin-bottom:12px;"></div>
       <hr style="border:none;border-top:1px solid var(--border);margin:12px 0;" />
       <h4 style="font-size:0.95rem;margin-bottom:8px;">Schedule session</h4>
-      <p style="font-size:0.75rem;color:var(--muted);margin-bottom:10px;">Each class arm needs a <strong>supervisor</strong>. Assign an <strong>invigilator</strong> to watch the class.</p>
+      <p style="font-size:0.75rem;color:var(--muted);margin-bottom:10px;"><strong>1 supervisor</strong> for the whole class (all arms) for the <strong>full exam day</strong>. <strong>1 invigilator</strong> for each arm for the <strong>full day</strong>.</p>
       <div class="form-group">
         <label>Class (arm) *</label>
-        <select id="examClass"></select>
+        <div class="combo-box" id="examClassCombo">
+          <input type="hidden" id="examClass" value="" />
+          <input type="text" id="examClassInput" class="combo-input" placeholder="Type or choose class…" autocomplete="off" spellcheck="false" />
+          <button type="button" class="combo-toggle" id="examClassToggle" tabindex="-1" aria-label="Open class list">▼</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Subject under exam *</label>
-        <select id="examSubject"></select>
+        <div class="combo-box" id="examSubjectCombo">
+          <input type="hidden" id="examSubject" value="" />
+          <input type="text" id="examSubjectInput" class="combo-input" placeholder="Type or choose subject…" autocomplete="off" spellcheck="false" />
+          <button type="button" class="combo-toggle" id="examSubjectToggle" tabindex="-1" aria-label="Open subject list">▼</button>
+        </div>
       </div>
       <div class="form-group">
-        <label>Invigilator *</label>
-        <select id="examInvigilator"></select>
+        <label>Invigilator (this arm only) *</label>
+        <div class="combo-box" id="examInvigilatorCombo">
+          <input type="hidden" id="examInvigilator" value="" />
+          <input type="text" id="examInvigilatorInput" class="combo-input" placeholder="Type or choose invigilator…" autocomplete="off" spellcheck="false" />
+          <button type="button" class="combo-toggle" id="examInvigilatorToggle" tabindex="-1" aria-label="Open invigilator list">▼</button>
+        </div>
       </div>
       <div class="form-group">
-        <label>Supervisor (for this arm) *</label>
-        <select id="examSupervisor"></select>
+        <label>Supervisor (whole class / all arms) *</label>
+        <div class="combo-box" id="examSupervisorCombo">
+          <input type="hidden" id="examSupervisor" value="" />
+          <input type="text" id="examSupervisorInput" class="combo-input" placeholder="Type or choose supervisor…" autocomplete="off" spellcheck="false" />
+          <button type="button" class="combo-toggle" id="examSupervisorToggle" tabindex="-1" aria-label="Open supervisor list">▼</button>
+        </div>
       </div>
       <div id="examClashWarning" style="display:none;background:#fef3c7;color:#92400e;padding:8px 12px;border-radius:8px;font-size:0.82rem;margin-bottom:10px;"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeExamModal()">Close</button>
         <button class="btn btn-primary" onclick="saveExamSession()">+ Add session</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Auto Exam/CA: pick supervisors per class group -->
+  <div class="modal-overlay" id="examAutoGenModal">
+    <div class="modal" style="max-width:520px;">
+      <h3>📝 Auto-generate Exam / CA</h3>
+      <p style="font-size:0.82rem;color:var(--muted);margin:0 0 12px 0;line-height:1.45;">
+        Duties last the <strong>whole exam day</strong> (not per paper).<br>
+        <strong>1 supervisor</strong> per class for the full day (all arms share them).<br>
+        <strong>1 invigilator</strong> per arm for the full day.<br>
+        Leave a class on <em>Auto</em> to pick a free supervisor automatically.
+      </p>
+      <div id="examAutoGenSupervisorList" style="max-height:50vh;overflow:auto;margin-bottom:12px;"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeExamAutoGenModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="confirmExamAutoGenerate()">Generate</button>
       </div>
     </div>
   </div>
@@ -4604,13 +4639,8 @@
       const btn = document.getElementById('btnMobileMore');
       if (btn) btn.textContent = '⋯ More';
       if (opening) {
-        // Expand Classes + Subjects so the drawer is not a blank wall of collapsed headers
-        ['classesCard', 'subjectsCard', 'settingsCard'].forEach(function (id) {
-          const card = document.getElementById(id);
-          if (card && card.classList.contains('collapsed')) {
-            card.classList.remove('collapsed');
-          }
-        });
+        // Everything under Setup starts folded; user expands what they need
+        if (typeof collapseAllSidebarCards === 'function') collapseAllSidebarCards();
         const side = document.getElementById('topSidebar');
         if (side) {
           try { side.scrollTop = 0; } catch (e) {}
@@ -12960,22 +12990,60 @@ function switchView(view) {
     }
 
     function getExamDutyClashes() {
-      const map = {};
-      (state.exams || []).forEach(e => {
-        ['invigilator', 'supervisor'].forEach(role => {
+      // Whole-day duties: same invigilator may appear on every paper for one arm;
+      // same supervisor may appear on every paper for all arms of one class.
+      // Clash only if a person covers different arms/classes (or mixes inv+sup on different groups) the same day.
+      const clashes = {};
+
+      function classBase(classId) {
+        const c = state.classes.find(function (x) { return x.id === classId; });
+        if (!c) return classId || '';
+        return (typeof getClassArmBase === 'function' && getClassArmBase(c.name)) || c.name || classId;
+      }
+
+      // day|person -> { invClassIds: Set, supBases: Set, exams: [] }
+      const byDayPerson = {};
+      (state.exams || []).forEach(function (e) {
+        [['invigilator', 'inv'], ['supervisor', 'sup']].forEach(function (pair) {
+          const role = pair[0];
           const name = (e[role] || '').toLowerCase().trim();
           if (!name) return;
-          const key = e.day + '|' + e.slotId + '|' + name;
-          if (!map[key]) map[key] = [];
-          map[key].push(e);
+          const key = e.day + '|' + name;
+          if (!byDayPerson[key]) {
+            byDayPerson[key] = { invClassIds: {}, supBases: {}, exams: [] };
+          }
+          const rec = byDayPerson[key];
+          rec.exams.push(e);
+          if (role === 'invigilator') rec.invClassIds[e.classId] = true;
+          else rec.supBases[String(classBase(e.classId)).toLowerCase()] = true;
         });
       });
-      // Also clash if same person is invigilator and supervisor in different sessions same slot
-      const clashes = {};
-      Object.entries(map).forEach(([key, arr]) => {
-        if (arr.length > 1) clashes[key] = arr;
+
+      Object.keys(byDayPerson).forEach(function (key) {
+        const rec = byDayPerson[key];
+        const invClasses = Object.keys(rec.invClassIds);
+        const supBases = Object.keys(rec.supBases);
+        let bad = false;
+        // Invigilator for more than one arm the same day
+        if (invClasses.length > 1) bad = true;
+        // Supervisor for more than one class group the same day
+        if (supBases.length > 1) bad = true;
+        // Same person invigilates one arm and supervises a different class group
+        if (invClasses.length && supBases.length) {
+          invClasses.forEach(function (cid) {
+            const b = String(classBase(cid)).toLowerCase();
+            if (supBases.some(function (sb) { return sb !== b; })) bad = true;
+          });
+        }
+        if (!bad) return;
+        const parts = key.split('|');
+        const day = parts[0];
+        const person = parts.slice(1).join('|');
+        const clashKey = day + '|*|' + person;
+        clashes[clashKey] = rec.exams;
       });
-      // Same session: invigilator === supervisor is ok for small schools, but flag dual role across sessions only
+
+      // Same-slot double-booking across unrelated duties still flagged via day-level rule above.
       return clashes;
     }
 
@@ -13041,36 +13109,216 @@ function switchView(view) {
       document.getElementById('examModalTitle').textContent = 'Exam / CA · ' + slot.label + ' · ' + dayTitle;
       document.getElementById('examSlotLabel').textContent = (slot.start && slot.end) ? (slot.start + ' – ' + slot.end) : '';
 
-      const classSel = document.getElementById('examClass');
-      classSel.innerHTML = state.classes.length
-        ? state.classes.map(c => '<option value="' + c.id + '"' + (preselectClassId && c.id === preselectClassId ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>').join('')
-        : '<option value="">No classes</option>';
-      if (preselectClassId) classSel.value = preselectClassId;
-
-      const subjSel = document.getElementById('examSubject');
-      subjSel.innerHTML = state.subjects.length
-        ? state.subjects.map(s => '<option value="' + s.id + '">' + escapeHtml(s.name) + ' (' + escapeHtml(s.teacher) + ')</option>').join('')
-        : '<option value="">No subjects</option>';
-
       const teachers = getUniqueTeachers();
-      const invSel = document.getElementById('examInvigilator');
-      const supSel = document.getElementById('examSupervisor');
-      const tOpts = teachers.length
-        ? teachers.map(t => '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + '</option>').join('')
-        : '<option value="">Add subjects with teachers first</option>';
-      invSel.innerHTML = tOpts;
-      supSel.innerHTML = tOpts;
-      if (teachers.length > 1) {
-        invSel.selectedIndex = 0;
-        supSel.selectedIndex = 1;
+      const classOpts = (state.classes || []).map(function (c) {
+        return { value: c.id, label: c.name };
+      });
+      const subjOpts = (state.subjects || []).map(function (s) {
+        return { value: s.id, label: s.name + (s.teacher ? ' (' + s.teacher + ')' : '') };
+      });
+      const teacherOpts = teachers.map(function (t) {
+        return { value: t, label: t };
+      });
+
+      function applyWholeDayDutiesFromClass() {
+        const cid = (document.getElementById('examClass') || {}).value;
+        if (!cid || !state.currentExamSlot) return;
+        const day = state.currentExamSlot.day;
+        const invHit = (state.exams || []).find(function (e) {
+          return e.day === day && e.classId === cid && (e.invigilator || '').trim();
+        });
+        if (invHit && invHit.invigilator) {
+          bindExamCombo('examInvigilator', teacherOpts, invHit.invigilator, checkExamClashPreview);
+        }
+        const supHit = (state.exams || []).find(function (e) {
+          return e.day === day && (e.supervisor || '').trim() &&
+            (typeof classesAreSameArmGroup === 'function'
+              ? classesAreSameArmGroup(e.classId, cid)
+              : e.classId === cid);
+        });
+        if (supHit && supHit.supervisor) {
+          bindExamCombo('examSupervisor', teacherOpts, supHit.supervisor, checkExamClashPreview);
+        }
       }
+
+      bindExamCombo('examClass', classOpts, preselectClassId || '', function () {
+        applyWholeDayDutiesFromClass();
+        checkExamClashPreview();
+      });
+      bindExamCombo('examSubject', subjOpts, subjOpts[0] ? subjOpts[0].value : '', checkExamClashPreview);
+      const invPref = teacherOpts[0] ? teacherOpts[0].value : '';
+      const supPref = teacherOpts[1] ? teacherOpts[1].value : (teacherOpts[0] ? teacherOpts[0].value : '');
+      bindExamCombo('examInvigilator', teacherOpts, invPref, checkExamClashPreview);
+      bindExamCombo('examSupervisor', teacherOpts, supPref, checkExamClashPreview);
+      applyWholeDayDutiesFromClass();
 
       renderExamExisting();
       checkExamClashPreview();
-      invSel.onchange = checkExamClashPreview;
-      supSel.onchange = checkExamClashPreview;
-      classSel.onchange = checkExamClashPreview;
       document.getElementById('examModal').classList.add('open');
+    }
+
+    /**
+     * Searchable combobox for Exam/CA modal fields.
+     * prefix: 'examClass' | 'examSubject' | 'examInvigilator' | 'examSupervisor'
+     * options: [{ value, label }]
+     */
+    function bindExamCombo(prefix, options, preselectValue, onChange) {
+      const hidden = document.getElementById(prefix);
+      const input = document.getElementById(prefix + 'Input');
+      const toggle = document.getElementById(prefix + 'Toggle');
+      const box = document.getElementById(prefix + 'Combo');
+      if (!hidden || !input || !toggle || !box) return;
+
+      const portalKey = '_examPortal_' + prefix;
+      if (window[portalKey]) {
+        try { window[portalKey].remove(); } catch (e) {}
+        window[portalKey] = null;
+      }
+
+      options = options || [];
+      let open = false;
+      let highlight = -1;
+
+      const pre = options.find(function (o) { return o.value === preselectValue; })
+        || options.find(function (o) { return o.label === preselectValue; });
+      hidden.value = pre ? pre.value : '';
+      input.value = pre ? pre.label : '';
+
+      const portal = document.createElement('ul');
+      portal.className = 'combo-portal-list';
+      portal.style.display = 'none';
+      document.body.appendChild(portal);
+      window[portalKey] = portal;
+
+      function filtered() {
+        const q = (input.value || '').toLowerCase().trim();
+        if (hidden.value) {
+          const sel = options.find(function (o) { return o.value === hidden.value; });
+          if (sel && input.value === sel.label) return options.slice();
+        }
+        if (!q) return options.slice();
+        return options.filter(function (o) {
+          return o.label.toLowerCase().indexOf(q) !== -1;
+        });
+      }
+
+      function placePortal() {
+        const rect = input.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const width = Math.min(rect.width, vw - 16);
+        let left = rect.left;
+        if (left + width > vw - 8) left = Math.max(8, vw - 8 - width);
+        if (left < 8) left = 8;
+        const spaceBelow = vh - rect.bottom - 8;
+        const maxH = Math.min(240, Math.max(100, spaceBelow));
+        portal.style.left = left + 'px';
+        portal.style.top = (rect.bottom + 2) + 'px';
+        portal.style.width = width + 'px';
+        portal.style.maxHeight = maxH + 'px';
+      }
+
+      function renderPortal() {
+        const items = filtered();
+        if (!items.length) {
+          portal.innerHTML = '<li class="combo-empty">No matches</li>';
+        } else {
+          portal.innerHTML = items.map(function (o, i) {
+            return '<li data-value="' + escapeHtml(o.value) + '" data-label="' + escapeHtml(o.label) + '"' +
+              (i === highlight ? ' class="highlight"' : '') + '>' + escapeHtml(o.label) + '</li>';
+          }).join('');
+        }
+      }
+
+      function openList() {
+        open = true;
+        highlight = 0;
+        renderPortal();
+        placePortal();
+        portal.style.display = 'block';
+        toggle.textContent = '▲';
+      }
+
+      function closeList(restoreLabel) {
+        open = false;
+        portal.style.display = 'none';
+        toggle.textContent = '▼';
+        if (restoreLabel !== false) {
+          const sel = options.find(function (o) { return o.value === hidden.value; });
+          input.value = sel ? sel.label : '';
+        }
+      }
+
+      function selectOpt(value, label) {
+        hidden.value = value || '';
+        input.value = label || '';
+        closeList(false);
+        if (typeof onChange === 'function') onChange();
+      }
+
+      input.onfocus = function () {
+        openList();
+        setTimeout(function () { try { input.select(); } catch (e) {} }, 15);
+      };
+      input.onclick = function () {
+        openList();
+        setTimeout(function () { try { input.select(); } catch (e) {} }, 15);
+      };
+      input.oninput = function () {
+        hidden.value = '';
+        highlight = 0;
+        if (!open) openList();
+        else renderPortal();
+      };
+      input.onkeydown = function (e) {
+        const items = filtered();
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (!open) openList();
+          else { highlight = Math.min(items.length - 1, highlight + 1); renderPortal(); }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          highlight = Math.max(0, highlight - 1);
+          renderPortal();
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (open && items[highlight]) selectOpt(items[highlight].value, items[highlight].label);
+          else closeList(true);
+        } else if (e.key === 'Escape') {
+          closeList(true);
+        }
+      };
+      toggle.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (open) closeList(true);
+        else { openList(); input.focus(); }
+      };
+      portal.onmousedown = function (e) {
+        const li = e.target.closest('li');
+        if (!li || !li.getAttribute('data-value')) return;
+        e.preventDefault();
+        selectOpt(li.getAttribute('data-value'), li.getAttribute('data-label'));
+      };
+      if (!window._examComboDocClose) {
+        window._examComboDocClose = true;
+        document.addEventListener('mousedown', function (e) {
+          ['examClass', 'examSubject', 'examInvigilator', 'examSupervisor'].forEach(function (p) {
+            const portalEl = window['_examPortal_' + p];
+            const boxEl = document.getElementById(p + 'Combo');
+            if (!portalEl || portalEl.style.display === 'none') return;
+            if (boxEl && (boxEl.contains(e.target) || portalEl.contains(e.target))) return;
+            portalEl.style.display = 'none';
+            const tog = document.getElementById(p + 'Toggle');
+            if (tog) tog.textContent = '▼';
+            const hid = document.getElementById(p);
+            const inp = document.getElementById(p + 'Input');
+            if (hid && inp) {
+              // restore label if value set — options not in scope; leave typed text
+            }
+          });
+        });
+      }
     }
 
     function closeExamModal() {
@@ -13116,12 +13364,37 @@ function switchView(view) {
       ['invigilator', 'supervisor'].forEach((role, idx) => {
         const name = idx === 0 ? inv : sup;
         if (!name) return;
-        const busy = (state.exams || []).some(e =>
-          e.day === day && e.slotId === slotId && e.classId !== classId &&
-          ((e.invigilator || '').toLowerCase().trim() === name.toLowerCase() ||
-           (e.supervisor || '').toLowerCase().trim() === name.toLowerCase())
-        );
-        if (busy) msgs.push('⚠️ <strong>' + escapeHtml(name) + '</strong> already on duty in another class this period.');
+        const n = name.toLowerCase().trim();
+        const busy = (state.exams || []).some(function (e) {
+          if (e.day !== day || e.classId === classId) return false;
+          const isInv = (e.invigilator || '').toLowerCase().trim() === n;
+          const isSup = (e.supervisor || '').toLowerCase().trim() === n;
+          if (!isInv && !isSup) return false;
+          // Same arm: same invigilator all day is fine
+          if (role === 'invigilator' && isInv && e.classId === classId) return false;
+          // Same class group: shared supervisor all day is fine
+          if (role === 'supervisor' && isSup &&
+              typeof classesAreSameArmGroup === 'function' &&
+              classesAreSameArmGroup(e.classId, classId)) {
+            return false;
+          }
+          if (role === 'invigilator' && isInv && e.classId !== classId) return true;
+          if (role === 'supervisor' && isSup &&
+              !(typeof classesAreSameArmGroup === 'function' && classesAreSameArmGroup(e.classId, classId))) {
+            return true;
+          }
+          // Invigilating elsewhere while selected as supervisor (or vice versa) on another group
+          if (role === 'supervisor' && isInv &&
+              !(typeof classesAreSameArmGroup === 'function' && classesAreSameArmGroup(e.classId, classId))) {
+            return true;
+          }
+          if (role === 'invigilator' && isSup &&
+              !(typeof classesAreSameArmGroup === 'function' && classesAreSameArmGroup(e.classId, classId))) {
+            return true;
+          }
+          return false;
+        });
+        if (busy) msgs.push('⚠️ <strong>' + escapeHtml(name) + '</strong> already on duty for another class this exam day.');
       });
       if (msgs.length) {
         el.style.display = 'block';
@@ -13139,7 +13412,7 @@ function switchView(view) {
       const supervisor = (document.getElementById('examSupervisor').value || '').trim();
       if (!classId || !subjectId) { showToast('Select class and subject'); return; }
       if (!invigilator) { showToast('Select an invigilator'); return; }
-      if (!supervisor) { showToast('Select a supervisor for this arm'); return; }
+      if (!supervisor) { showToast('Select a supervisor for the whole class (all arms)'); return; }
 
       const { day, slotId } = state.currentExamSlot;
       const exists = (state.exams || []).find(e =>
@@ -13184,7 +13457,76 @@ function switchView(view) {
       pushHistory();
     }
 
-    function autoGenerateExamTimetable() {
+    function closeExamAutoGenModal() {
+      const m = document.getElementById('examAutoGenModal');
+      if (m) m.classList.remove('open');
+    }
+
+    function getExamClassGroupList() {
+      const seen = {};
+      const list = [];
+      (state.classes || []).forEach(function (c) {
+        const base = (typeof getClassArmBase === 'function' && getClassArmBase(c.name)) || c.id;
+        const key = String(base).toLowerCase();
+        if (seen[key]) {
+          seen[key].classIds.push(c.id);
+          seen[key].names.push(c.name);
+          return;
+        }
+        seen[key] = { base: base, key: key, classIds: [c.id], names: [c.name] };
+        list.push(seen[key]);
+      });
+      return list;
+    }
+
+    function openExamAutoGenModal() {
+      if (!state.classes.length) { showToast('Add classes (arms) first'); return; }
+      if (!state.subjects.length) { showToast('Add subjects first'); return; }
+      if (!state.examSlots) state.examSlots = [];
+      const teachingSlots = state.examSlots.filter(s => !s.isBreak);
+      if (!teachingSlots.length) { showToast('Add Exam/CA sessions in the sidebar first'); return; }
+      const teachers = getUniqueTeachers();
+      if (teachers.length < 1) { showToast('Need teachers on subjects for duties'); return; }
+      const examDayNames = getExamSchedule().map(r => examDayKey(r));
+      if (!examDayNames.length) {
+        showToast('Select Exam/CA days in the sidebar first');
+        return;
+      }
+
+      const groups = getExamClassGroupList();
+      const host = document.getElementById('examAutoGenSupervisorList');
+      if (!host) return;
+      let html = '<div style="font-size:0.78rem;font-weight:700;color:#334155;margin-bottom:8px;">Supervisors by class</div>';
+      groups.forEach(function (g, idx) {
+        const label = g.names.length > 1
+          ? (g.names[0].replace(/[A-Za-z]$/, '').trim() || g.base) + ' (' + g.names.join(', ') + ')'
+          : g.names[0];
+        html += '<div class="form-group" style="margin-bottom:10px;">' +
+          '<label style="font-size:0.78rem;">' + escapeHtml(label) + '</label>' +
+          '<select class="exam-autogen-sup" data-group-key="' + escapeHtml(g.key) + '" style="width:100%;">' +
+          '<option value="">Auto (pick free teacher)</option>' +
+          teachers.map(function (t) {
+            return '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + '</option>';
+          }).join('') +
+          '</select></div>';
+      });
+      host.innerHTML = html;
+      const modal = document.getElementById('examAutoGenModal');
+      if (modal) modal.classList.add('open');
+    }
+
+    function confirmExamAutoGenerate() {
+      const preferred = {};
+      document.querySelectorAll('.exam-autogen-sup').forEach(function (sel) {
+        const key = sel.getAttribute('data-group-key') || '';
+        const val = (sel.value || '').trim();
+        if (key && val) preferred[key] = val;
+      });
+      closeExamAutoGenModal();
+      autoGenerateExamTimetable(preferred);
+    }
+
+    function autoGenerateExamTimetable(preferredSupervisors) {
       if (!state.classes.length) { showToast('Add classes (arms) first'); return; }
       if (!state.subjects.length) { showToast('Add subjects first'); return; }
       if (!state.examSlots) state.examSlots = [];
@@ -13193,11 +13535,19 @@ function switchView(view) {
       const teachers = getUniqueTeachers();
       if (teachers.length < 1) { showToast('Need teachers on subjects for duties'); return; }
 
-      const ok = confirm('Auto-generate Exam/CA timetable?\n\nOK = Clear existing exam sessions and generate fresh\nCancel = Stop');
-      if (!ok) return;
+      if (preferredSupervisors === undefined) {
+        openExamAutoGenModal();
+        return;
+      }
+
+      const preferred = preferredSupervisors || {};
+      if (!confirm(
+        'This will clear existing Exam/CA sessions and generate fresh.\n\n' +
+        '• 1 supervisor per class for the WHOLE exam day (all arms)\n' +
+        '• 1 invigilator per arm for the WHOLE exam day\n\nContinue?'
+      )) return;
 
       state.exams = [];
-      // One exam sitting per class per subject that has weekly > 0 (or all subjects if none set)
       const demands = [];
       state.classes.forEach(c => {
         state.subjects.forEach(s => {
@@ -13206,21 +13556,39 @@ function switchView(view) {
         });
       });
       if (!demands.length) {
-        // Fallback: every class × every subject once
         state.classes.forEach(c => {
           state.subjects.forEach(s => demands.push({ classId: c.id, subjectId: s.id }));
         });
       }
 
       let teacherIdx = 0;
-      function nextTeacher(exclude) {
+      function nextTeacher(excludeList) {
         if (!teachers.length) return '';
+        const excludes = (excludeList || []).map(function (x) {
+          return String(x || '').toLowerCase().trim();
+        }).filter(Boolean);
         for (let i = 0; i < teachers.length; i++) {
           const t = teachers[teacherIdx % teachers.length];
           teacherIdx++;
-          if (!exclude || t.toLowerCase() !== exclude.toLowerCase()) return t;
+          if (excludes.indexOf(String(t).toLowerCase().trim()) < 0) return t;
         }
-        return teachers[0];
+        return teachers[0] || '';
+      }
+
+      // People already committed for the day (whole-day duties)
+      // day -> { supervisors: { baseKey: name }, invigilators: { classId: name }, used: { nameLower: true } }
+      const dayDuty = {};
+      function dutyForDay(day) {
+        if (!dayDuty[day]) dayDuty[day] = { supervisors: {}, invigilators: {}, used: {} };
+        return dayDuty[day];
+      }
+      function markUsed(day, name) {
+        if (!name) return;
+        dutyForDay(day).used[name.toLowerCase().trim()] = true;
+      }
+      function isUsed(day, name) {
+        if (!name) return false;
+        return !!dutyForDay(day).used[name.toLowerCase().trim()];
       }
 
       let placed = 0;
@@ -13232,59 +13600,112 @@ function switchView(view) {
         return;
       }
 
-      demands.forEach(d => {
-        const subjectTeacher = (state.subjects.find(s => s.id === d.subjectId) || {}).teacher || '';
-        let found = null;
+      // Group demands by class-arm family + subject
+      const groups = {};
+      demands.forEach(function (d) {
+        const cls = state.classes.find(function (c) { return c.id === d.classId; });
+        const base = (typeof getClassArmBase === 'function' && getClassArmBase(cls && cls.name)) || d.classId;
+        const gkey = String(base).toLowerCase() + '|' + d.subjectId;
+        if (!groups[gkey]) groups[gkey] = { subjectId: d.subjectId, base: base, baseKey: String(base).toLowerCase(), classIds: [] };
+        if (groups[gkey].classIds.indexOf(d.classId) < 0) groups[gkey].classIds.push(d.classId);
+      });
+
+      Object.keys(groups).forEach(function (gkey) {
+        const g = groups[gkey];
+        const subjectTeacher = (state.subjects.find(function (s) { return s.id === g.subjectId; }) || {}).teacher || '';
+        let foundDay = null;
+        let foundSlotId = null;
+
         outer:
-        for (const day of examDayNames) {
-          for (const slot of teachingSlots) {
-            // Class already has an exam this slot?
-            if ((state.exams || []).some(e => e.day === day && e.slotId === slot.id && e.classId === d.classId)) continue;
+        for (let di = 0; di < examDayNames.length; di++) {
+          const day = examDayNames[di];
+          for (let si = 0; si < teachingSlots.length; si++) {
+            const slot = teachingSlots[si];
+            const armBusy = g.classIds.some(function (cid) {
+              return (state.exams || []).some(function (e) {
+                return e.day === day && e.slotId === slot.id && e.classId === cid;
+              });
+            });
+            if (armBusy) continue;
 
-            // Pick invigilator: prefer not the subject teacher (they may not invigilate their own paper)
-            let inv = nextTeacher(subjectTeacher);
-            let sup = nextTeacher(inv);
-            if (!sup) sup = nextTeacher('');
-            // Ensure duties free this slot
-            const dutyBusy = (name) => (state.exams || []).some(e =>
-              e.day === day && e.slotId === slot.id &&
-              ((e.invigilator || '').toLowerCase() === name.toLowerCase() ||
-               (e.supervisor || '').toLowerCase() === name.toLowerCase())
-            );
-            let tries = 0;
-            while (inv && dutyBusy(inv) && tries < teachers.length + 2) {
-              inv = nextTeacher(subjectTeacher);
-              tries++;
-            }
-            tries = 0;
-            while (sup && (dutyBusy(sup) || sup.toLowerCase() === (inv || '').toLowerCase()) && tries < teachers.length + 2) {
-              sup = nextTeacher(inv);
-              tries++;
-            }
-            if (!inv || !sup) continue;
-            if (dutyBusy(inv) || dutyBusy(sup)) continue;
+            const dd = dutyForDay(day);
 
-            found = { day, slotId: slot.id, invigilator: inv, supervisor: sup };
+            // Supervisor for this class group — fixed for the whole day
+            let sup = dd.supervisors[g.baseKey] || '';
+            if (!sup) {
+              const prefSup = preferred[g.baseKey] || preferred[g.base] || '';
+              if (prefSup && !isUsed(day, prefSup)) {
+                sup = prefSup;
+              } else {
+                sup = nextTeacher([subjectTeacher].concat(Object.keys(dd.used)));
+                let tries = 0;
+                while (sup && isUsed(day, sup) && tries < teachers.length + 3) {
+                  sup = nextTeacher([subjectTeacher, sup].concat(Object.keys(dd.used)));
+                  tries++;
+                }
+              }
+              if (!sup || isUsed(day, sup)) continue;
+            }
+
+            // Invigilator per arm — fixed for the whole day
+            const invs = [];
+            let invOk = true;
+            for (let ai = 0; ai < g.classIds.length; ai++) {
+              const cid = g.classIds[ai];
+              let inv = dd.invigilators[cid] || '';
+              if (!inv) {
+                inv = nextTeacher([subjectTeacher, sup].concat(invs).concat(Object.keys(dd.used)));
+                let t2 = 0;
+                while (inv && (isUsed(day, inv) || inv.toLowerCase() === (sup || '').toLowerCase() ||
+                  invs.some(function (x) { return x.toLowerCase() === inv.toLowerCase(); })) && t2 < teachers.length + 3) {
+                  inv = nextTeacher([subjectTeacher, sup, inv].concat(invs).concat(Object.keys(dd.used)));
+                  t2++;
+                }
+                if (!inv || isUsed(day, inv)) { invOk = false; break; }
+              }
+              invs.push(inv);
+            }
+            if (!invOk || invs.length !== g.classIds.length) continue;
+
+            foundDay = day;
+            foundSlotId = slot.id;
+            g._invs = invs;
+            g._sup = sup;
             break outer;
           }
         }
-        if (!found) { failed++; return; }
-        state.exams.push({
-          id: 'ex' + Date.now() + Math.random().toString(36).slice(2, 7),
-          day: found.day,
-          slotId: found.slotId,
-          classId: d.classId,
-          subjectId: d.subjectId,
-          invigilator: found.invigilator,
-          supervisor: found.supervisor
+
+        if (!foundDay || !g._sup) {
+          failed += g.classIds.length;
+          return;
+        }
+
+        const dd = dutyForDay(foundDay);
+        dd.supervisors[g.baseKey] = g._sup;
+        markUsed(foundDay, g._sup);
+        g.classIds.forEach(function (classId, idx) {
+          const inv = g._invs[idx];
+          dd.invigilators[classId] = inv;
+          markUsed(foundDay, inv);
+          state.exams.push({
+            id: 'ex' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + '_' + idx,
+            day: foundDay,
+            slotId: foundSlotId,
+            classId: classId,
+            subjectId: g.subjectId,
+            invigilator: inv,
+            supervisor: g._sup
+          });
+          placed++;
         });
-        placed++;
       });
 
       switchView('exam');
       renderTable();
       updateExamConflicts();
-      const msg = 'Exam/CA generated: ' + placed + ' sessions' + (failed ? (', ' + failed + ' could not be placed') : '');
+      const msg = 'Exam/CA generated: ' + placed + ' sessions' +
+        (failed ? (', ' + failed + ' could not be placed') : '') +
+        ' · whole-day supervisor per class, whole-day invigilator per arm';
       showToast(msg);
       pushHistory();
       if (failed) alert(msg + '\n\nAdd more periods, days, or teachers and try again.');
