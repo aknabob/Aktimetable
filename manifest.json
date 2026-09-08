@@ -1,23 +1,44 @@
 {
-  "name": "AK-COOP Cooperative Manager",
-  "short_name": "AK-COOP",
-  "description": "Cooperative savings, loans and member management",
+  "name": "Akeem's Timetable Generator",
+  "short_name": "Akeem Timetable",
+  "description": "School timetable generator by Olaniyan Akeem",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#D4AF37",
-  "theme_color": "#D4AF37",
+  "orientation": "any",
+  "background_color": "#BFDBFE",
+  "theme_color": "#93C5FD",
+  "lang": "en",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192x192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512x512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
