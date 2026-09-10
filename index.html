@@ -302,15 +302,16 @@
       box-shadow: var(--shadow);
       border: 1px solid #e0e7ff;
       margin-bottom: 12px;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
       align-items: center;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
+      overflow-x: visible;
       /* Freeze view tabs while scrolling */
       position: sticky;
       top: 0;
       z-index: 40;
     }
+    .view-tab .tab-short { display: none; }
+    .view-tab .tab-long { display: inline; }
 
     /* Top horizontal setup strip stays under header */
     .sidebar.no-print {
@@ -335,6 +336,16 @@
       background: #eef2ff;
       color: var(--primary);
       border-color: #c7d2fe;
+    }
+    .view-tab-sep {
+      display: inline-block;
+      width: 1px;
+      align-self: stretch;
+      min-height: 22px;
+      margin: 0 4px;
+      background: #c7d2fe;
+      flex-shrink: 0;
+      border-radius: 1px;
     }
     .view-tab.active {
       background: linear-gradient(180deg, #6366f1 0%, var(--primary) 100%);
@@ -2424,12 +2435,11 @@
       }
 
       .view-tabs {
-        padding: 4px;
-        gap: 4px;
+        padding: 6px;
+        gap: 6px;
         margin-bottom: 8px;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        flex-wrap: nowrap;
+        overflow-x: visible;
+        flex-wrap: wrap;
         top: 0;
         position: sticky;
         z-index: 80;
@@ -2438,13 +2448,27 @@
       }
 
       .view-tab {
-        padding: 8px 11px;
+        padding: 8px 10px;
         font-size: 0.72rem;
         white-space: nowrap;
-        flex-shrink: 0;
+        flex: 1 1 auto;
+        flex-shrink: 1;
         min-height: 40px;
         border-radius: 999px;
         max-width: none;
+        text-align: center;
+      }
+      .view-tab .tab-long { display: none; }
+      .view-tab .tab-short { display: inline; }
+      .view-tab-sep { display: none; }
+      #saveBtnTop {
+        flex: 0 0 auto;
+        margin-left: 0 !important;
+      }
+      .view-tabs .view-controls {
+        flex: 1 1 100%;
+        min-width: 0 !important;
+        margin-top: 2px;
       }
 
       .view-title {
@@ -3910,6 +3934,13 @@
               </select>
               <p style="font-size:0.68rem;color:#64748b;margin-top:4px;">Choose any teaching period for JUMAT on Friday. That cell is blocked for all classes when JUMAT is enabled.</p>
             </div>
+            <div class="form-group" style="margin-top:10px;">
+              <label style="display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:600;cursor:pointer;color:#0f172a;">
+                <input type="checkbox" id="soundEnabledToggle" checked onchange="toggleAppSound(this.checked)" style="width:auto;min-height:0;" />
+                🔊 Sound effects
+              </label>
+              <p style="font-size:0.68rem;color:#64748b;margin-top:4px;">Soft beeps on save, add, errors, and clashes (works offline)</p>
+            </div>
             <div class="form-group" style="margin-bottom:0;margin-top:8px;">
               <button type="button" class="btn btn-danger btn-sm" style="width:100%;" onclick="clearAll()" title="Clear all classes, subjects, assignments and exams">🗑️ Clear all data</button>
               <p style="font-size:0.68rem;color:#64748b;margin-top:4px;">Removes everything (classes, subjects, timetable, exams)</p>
@@ -3961,6 +3992,41 @@
           </div>
         </div>
 
+        <div class="card collapsible-card collapsed" id="studySubjectsCard">
+          <h2 class="collapsible-head" onclick="toggleSidebarCard('studySubjectsCard')" title="Expand / collapse">
+            <span>📖 Study subjects</span>
+            <span style="display:flex;align-items:center;gap:6px;">
+              <button type="button" class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openStudySubjectModal()" title="Add study subject">+ Add</button>
+              <span class="collapse-chevron" aria-hidden="true">▼</span>
+            </span>
+          </h2>
+          <div class="collapsible-body">
+            <p style="font-size:0.72rem;color:var(--muted);margin-bottom:8px;">Personal reading list — set how many periods to study each subject, then auto-generate.</p>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label style="font-size:0.78rem;font-weight:700;color:#0f172a;">Study periods &amp; times</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:0.78rem;margin:6px 0;cursor:pointer;">
+                <input type="radio" name="studySlotMode" id="studySlotModeSchool" checked onchange="setStudySlotMode(true)" style="width:auto;min-height:0;" />
+                Same as school periods
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:0.78rem;margin:0 0 8px;cursor:pointer;">
+                <input type="radio" name="studySlotMode" id="studySlotModeCustom" onchange="setStudySlotMode(false)" style="width:auto;min-height:0;" />
+                Custom study periods (different times)
+              </label>
+              <div id="studySlotsPanel" style="display:none;">
+                <div class="item-list" id="studySlotList" style="max-height:160px;margin-bottom:8px;"></div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+                  <input type="text" id="studySlotLabel" placeholder="Label e.g. Study 1" style="flex:1;min-width:90px;font-size:0.78rem;padding:6px 8px;" />
+                  <input type="time" id="studySlotStart" value="16:00" style="width:100px;font-size:0.78rem;padding:6px 8px;" />
+                  <input type="time" id="studySlotEnd" value="17:00" style="width:100px;font-size:0.78rem;padding:6px 8px;" />
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:4px;" onclick="addStudySlot()">+ Add study period</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="width:100%;" onclick="copySchoolSlotsToStudy()" title="Copy school teaching periods as a starting point">Copy from school periods</button>
+              </div>
+            </div>
+            <div class="item-list" id="studySubjectList"></div>
+          </div>
+        </div>
+
         <div class="card collapsible-card collapsed" id="teachingSlotsCard">
           <h2 class="collapsible-head" onclick="toggleSidebarCard('teachingSlotsCard')" title="Expand / collapse">
             <span>⏰ Teaching Periods & Breaks</span>
@@ -4008,16 +4074,18 @@
         </div>
     </aside>
 
-    <div class="view-tabs" style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow-x:auto;">
-      <button class="view-tab active" data-view="school" onclick="switchView('school')">🏫 School General</button>
-      <button class="view-tab" data-view="class" onclick="switchView('class')">🎓 Class Timetable</button>
-      <button class="view-tab" data-view="teacher" onclick="switchView('teacher')">👤 Teacher Timetable</button>
-      <button class="view-tab" data-view="compare" onclick="switchView('compare')">🔀 Side by Side</button>
-      <button class="view-tab" data-view="exam" onclick="switchView('exam')">📝 Exam / CA</button>
-      <button class="btn btn-primary btn-sm no-print" id="saveBtnTop" onclick="saveTimetableNow()" style="padding:4px 10px;border-radius:6px;font-size:0.78rem;font-weight:600;background:#16a34a;border:1px solid #15803d;color:white;box-shadow:0 1px 3px rgba(22,163,74,0.25);display:inline-flex;align-items:center;gap:4px;white-space:nowrap;margin-left:4px;flex-shrink:0;">
+    <div class="view-tabs no-print">
+      <button class="view-tab active" data-view="school" onclick="switchView('school')"><span class="tab-long">🏫 School General</span><span class="tab-short">🏫 School</span></button>
+      <button class="view-tab" data-view="class" onclick="switchView('class')"><span class="tab-long">🎓 Class Timetable</span><span class="tab-short">🎓 Class</span></button>
+      <button class="view-tab" data-view="teacher" onclick="switchView('teacher')"><span class="tab-long">👤 Teacher Timetable</span><span class="tab-short">👤 Teacher</span></button>
+      <button class="view-tab" data-view="compare" onclick="switchView('compare')"><span class="tab-long">🔀 Side by Side</span><span class="tab-short">🔀 Compare</span></button>
+      <button class="view-tab" data-view="exam" onclick="switchView('exam')"><span class="tab-long">📝 Exam / CA</span><span class="tab-short">📝 Exam</span></button>
+      <span class="view-tab-sep" aria-hidden="true" title="Personal"></span>
+      <button class="view-tab" data-view="study" onclick="switchView('study')" title="Personal reading plan"><span class="tab-long">📖 Reading</span><span class="tab-short">📖 Reading</span></button>
+      <button class="btn btn-primary btn-sm" id="saveBtnTop" onclick="saveTimetableNow()" style="padding:4px 10px;border-radius:6px;font-size:0.78rem;font-weight:600;background:#16a34a;border:1px solid #15803d;color:white;box-shadow:0 1px 3px rgba(22,163,74,0.25);display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">
         💾 Save
       </button>
-      <div class="view-controls" id="viewControls" style="flex:1;min-width:8px;"></div>
+      <div class="view-controls" id="viewControls"></div>
     </div>
 
     <div class="layout">
@@ -4237,6 +4305,48 @@
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" onclick="closeExamAutoGenModal()">Cancel</button>
         <button type="button" class="btn btn-primary" onclick="confirmExamAutoGenerate()">Generate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Study subject modal -->
+  <div class="modal-overlay" id="studySubjectModal">
+    <div class="modal" style="max-width:420px;">
+      <h3 id="studySubjectModalTitle">Add study subject</h3>
+      <div class="form-group">
+        <label>Subject to study *</label>
+        <input type="text" id="studySubjName" placeholder="e.g. Mathematics, Quran, English" />
+      </div>
+      <div class="form-group">
+        <label>Periods per week *</label>
+        <input type="number" id="studySubjPeriods" min="1" max="40" value="3" />
+        <p style="font-size:0.72rem;color:var(--muted);margin-top:4px;">How many study periods to place on your reading timetable</p>
+      </div>
+      <div class="form-group">
+        <label>Colour</label>
+        <div id="studyColorPicker" class="color-picker" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeStudySubjectModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveStudySubject()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Study cell assign modal -->
+  <div class="modal-overlay" id="studyAssignModal">
+    <div class="modal" style="max-width:420px;">
+      <h3 id="studyAssignTitle">Study period</h3>
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px;" id="studyAssignSlotLabel"></p>
+      <div id="studyAssignExisting" style="margin-bottom:12px;"></div>
+      <div class="form-group">
+        <label>Subject</label>
+        <select id="studyAssignSubject"></select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger" onclick="clearStudyCell()">Clear cell</button>
+        <button type="button" class="btn btn-secondary" onclick="closeStudyAssignModal()">Close</button>
+        <button type="button" class="btn btn-primary" onclick="saveStudyAssignment()">+ Place</button>
       </div>
     </div>
   </div>
@@ -4476,6 +4586,13 @@
       /** Folded combined-subject cells: key day|slotId|classId → true when folded */
       foldedGroups: {},
       exams: [],
+      /** Personal reading / study timetable */
+      studySubjects: [],   // { id, name, periods, color }
+      studyAssignments: [], // { id, day, slotId, subjectId }
+      studySlots: [],       // optional custom periods { id, label, start, end, isBreak }
+      studyUseSchoolSlots: true, // if true, reading grid uses school teaching periods
+      editingStudySubjectId: null,
+      currentStudySlot: null, // { day, slotId }
       editingClassId: null,
       editingSubjectId: null,
       editingSlotId: null,
@@ -4584,7 +4701,7 @@
     }
 
     function collapseAllSidebarCards() {
-      ['settingsCard', 'subjectsCard', 'conflictsCard', 'classesCard', 'teachingSlotsCard', 'examSlotsCard'].forEach(id => {
+      ['settingsCard', 'subjectsCard', 'conflictsCard', 'classesCard', 'studySubjectsCard', 'teachingSlotsCard', 'examSlotsCard'].forEach(id => {
         setSidebarCardCollapsed(id, true);
       });
     }
@@ -4606,6 +4723,8 @@
       renderExamSlots();
       renderClasses();
       renderSubjects();
+      if (typeof syncStudySlotModeUi === 'function') syncStudySlotModeUi();
+      if (typeof renderStudySubjects === 'function') renderStudySubjects();
       switchView(state.currentView || 'school');
       // Start with all setup sections collapsed
       collapseAllSidebarCards();
@@ -4624,6 +4743,23 @@
       }
       if (typeof updateDirtyIndicator === 'function') updateDirtyIndicator();
       if (typeof initMobileLayout === 'function') initMobileLayout();
+      // Sound preference
+      try {
+        const s = localStorage.getItem('akeemTimetableSound');
+        if (s === '0') state.soundEnabled = false;
+        else if (s === '1') state.soundEnabled = true;
+        else if (state.soundEnabled == null) state.soundEnabled = true;
+      } catch (e) { state.soundEnabled = true; }
+      if (typeof syncSoundToggle === 'function') syncSoundToggle();
+      // Browsers require a user gesture before audio plays
+      if (!window._soundGestureBound) {
+        window._soundGestureBound = true;
+        ['pointerdown', 'touchstart', 'keydown'].forEach(function (ev) {
+          document.addEventListener(ev, function () {
+            if (typeof unlockAudio === 'function') unlockAudio();
+          }, { once: false, passive: true });
+        });
+      }
     }
 
     function isMobileLayout() {
@@ -5230,6 +5366,18 @@ function switchView(view) {
         legend.innerHTML = '<span class="legend-item">Invigilator watches the class · Supervisor oversees each arm</span> <span class="legend-item">Click cells to schedule</span>';
         conflictsCard.style.display = 'block';
         updateExamConflicts();
+      } else if (view === 'study') {
+        const placed = (state.studyAssignments || []).length;
+        const need = (state.studySubjects || []).reduce(function (s, x) { return s + (x.periods || 0); }, 0);
+        title.textContent = 'Personal Reading / Study Timetable' +
+          (need ? (' · ' + placed + '/' + need + ' periods') : '');
+        controls.innerHTML =
+          '<button class="btn btn-primary btn-sm" onclick="autoGenerateStudyTimetable()">✨ Auto-generate study plan</button>' +
+          '<button class="btn btn-danger btn-sm" onclick="clearStudyAssignments()">Clear study grid</button>';
+        legend.innerHTML = '<span class="legend-item">Your personal reading plan</span> <span class="legend-item">Add study subjects in Setup, set periods/week, then auto-generate</span> <span class="legend-item">Click a cell to place or change a subject</span>';
+        conflictsCard.style.display = 'none';
+        if (typeof syncStudySlotModeUi === 'function') syncStudySlotModeUi();
+        if (typeof renderStudySubjects === 'function') renderStudySubjects();
       }
       renderTable();
     }
@@ -7932,7 +8080,11 @@ function switchView(view) {
       const emptyView = opts.noEmptyUi ? null : document.getElementById('emptyView');
       const view = state.currentView;
 
-      const activeSlots = (view === 'exam') ? (state.examSlots || []) : state.slots;
+      const activeSlots = (view === 'exam')
+        ? (state.examSlots || [])
+        : (view === 'study' && typeof getStudySlots === 'function')
+          ? getStudySlots()
+          : state.slots;
       if (activeSlots.length === 0) {
         table.style.display = 'none';
         if (emptyView) {
@@ -7940,6 +8092,22 @@ function switchView(view) {
           document.getElementById('emptyMessage').textContent = view === 'exam'
             ? 'Add Exam/CA periods and breaks in the sidebar first.'
             : 'Add periods and breaks first.';
+        }
+        return;
+      }
+      if (view === 'study' && (!(state.days || []).length)) {
+        table.style.display = 'none';
+        if (emptyView) {
+          emptyView.style.display = 'block';
+          document.getElementById('emptyMessage').textContent = 'Set weekdays in Settings first.';
+        }
+        return;
+      }
+      if (view === 'study' && typeof getStudySlots === 'function' && !getStudySlots().length) {
+        table.style.display = 'none';
+        if (emptyView) {
+          emptyView.style.display = 'block';
+          document.getElementById('emptyMessage').textContent = 'Add custom study periods in Setup → Study subjects, or choose “Same as school periods”.';
         }
         return;
       }
@@ -7984,7 +8152,7 @@ function switchView(view) {
       const clashes = getTeacherClashes();
       window._clashIdSet = buildClashIdSet(clashes);
       const examClashes = getExamDutyClashes();
-      const editable = (view === 'school' || view === 'teacher' || view === 'class' || view === 'exam');
+      const editable = (view === 'school' || view === 'teacher' || view === 'class' || view === 'exam' || view === 'study');
 
       // Header
       let html = '<thead><tr><th class="day-header">Day</th>';
@@ -8006,7 +8174,47 @@ function switchView(view) {
       });
       html += '</tr></thead><tbody>';
 
-      if (view === 'exam') {
+      if (view === 'study') {
+        const days = state.days || [];
+        const studyMap = {};
+        (state.studyAssignments || []).forEach(function (a) {
+          const k = a.day + '|' + a.slotId;
+          studyMap[k] = a;
+        });
+        const subjMap = {};
+        (state.studySubjects || []).forEach(function (s) { subjMap[s.id] = s; });
+        if (!(state.studySubjects || []).length) {
+          html += '<tr><td colspan="' + (1 + activeSlots.length) + '" style="text-align:center;padding:28px;color:var(--muted);">Add study subjects in <strong>Setup → Study subjects</strong>, set periods per week, then use <strong>Auto-generate study plan</strong>.</td></tr>';
+        } else {
+          days.forEach(function (day) {
+            html += '<tr>';
+            html += '<td class="day-cell">' + escapeHtml(day) + '</td>';
+            activeSlots.forEach(function (slot) {
+              if (slot.isBreak) {
+                html += '<td class="slot break-slot" title="' + escapeHtml(slot.label) + '"><div class="break-label">' + escapeHtml(slot.label) + '</div></td>';
+                return;
+              }
+              const a = studyMap[day + '|' + slot.id];
+              const timeStr = (slot.start && slot.end) ? (slot.start + '–' + slot.end) : '';
+              const click = 'onclick="openStudyAssignModal(\'' + String(day).replace(/'/g, "\\'") + '\', \'' + slot.id + '\')"';
+              html += '<td class="slot" style="cursor:pointer;" title="Click to set study subject" ' + click + '>';
+              html += '<div class="slot-entries">';
+              if (!a) {
+                html += '<div class="slot-add-hint">+ Study</div>';
+              } else {
+                const subj = subjMap[a.subjectId];
+                const bg = (subj && subj.color) ? subj.color : '#0284c7';
+                html += '<div class="entry" style="background:' + bg + '">' +
+                  '<div class="entry-subj">' + escapeHtml(subj ? subj.name : 'Study') + '</div>' +
+                  (timeStr ? '<div class="entry-room">' + escapeHtml(timeStr) + '</div>' : '') +
+                  '</div>';
+              }
+              html += '</div></td>';
+            });
+            html += '</tr>';
+          });
+        }
+      } else if (view === 'exam') {
         const examDays = getExamSchedule();
         if (!examDays.length) {
           html += '<tr><td colspan="' + (2 + activeSlots.length) + '" style="text-align:center;padding:24px;color:var(--muted);">Select Exam/CA days &amp; dates in the sidebar first.</td></tr>';
@@ -12986,6 +13194,397 @@ function switchView(view) {
       return pickVariedCandidate(candidates, 10);
     }
 
+    // ========== PERSONAL READING / STUDY TIMETABLE ==========
+    function getStudyColors() {
+      return (typeof COLORS !== 'undefined' && COLORS.length) ? COLORS : [
+        '#4f46e5', '#0284c7', '#0d9488', '#ca8a04', '#e11d48', '#7c3aed', '#ea580c', '#16a34a'
+      ];
+    }
+
+    /** Periods used by the personal reading grid (custom or school teaching periods). */
+    function getStudySlots() {
+      if (state.studyUseSchoolSlots === false) {
+        return (state.studySlots || []).filter(function (s) { return !s.isBreak; });
+      }
+      return (state.slots || []).filter(function (s) { return !s.isBreak; });
+    }
+
+    function setStudySlotMode(useSchool) {
+      state.studyUseSchoolSlots = !!useSchool;
+      const panel = document.getElementById('studySlotsPanel');
+      const school = document.getElementById('studySlotModeSchool');
+      const custom = document.getElementById('studySlotModeCustom');
+      if (school) school.checked = !!useSchool;
+      if (custom) custom.checked = !useSchool;
+      if (panel) panel.style.display = useSchool ? 'none' : 'block';
+      if (!useSchool && typeof renderStudySlots === 'function') renderStudySlots();
+      if (state.currentView === 'study') {
+        if (typeof switchView === 'function') switchView('study');
+        else if (typeof renderTable === 'function') renderTable();
+      }
+      if (typeof pushHistory === 'function') pushHistory();
+      else if (typeof autosaveNow === 'function') autosaveNow();
+    }
+
+    function syncStudySlotModeUi() {
+      const useSchool = state.studyUseSchoolSlots !== false;
+      const school = document.getElementById('studySlotModeSchool');
+      const custom = document.getElementById('studySlotModeCustom');
+      const panel = document.getElementById('studySlotsPanel');
+      if (school) school.checked = useSchool;
+      if (custom) custom.checked = !useSchool;
+      if (panel) panel.style.display = useSchool ? 'none' : 'block';
+      if (!useSchool && typeof renderStudySlots === 'function') renderStudySlots();
+    }
+
+    function renderStudySlots() {
+      const list = document.getElementById('studySlotList');
+      if (!list) return;
+      const items = state.studySlots || [];
+      if (!items.length) {
+        list.innerHTML = '<p style="color:var(--muted);font-size:0.78rem;text-align:center;padding:6px;">No custom study periods yet</p>';
+        return;
+      }
+      list.innerHTML = items.map(function (s, idx) {
+        const time = (s.start && s.end) ? (s.start + '–' + s.end) : '';
+        return '<div class="list-item">' +
+          '<div class="subj-main" style="flex:1;min-width:0;">' +
+            '<div class="name">' + escapeHtml(s.label || ('Study ' + (idx + 1))) + '</div>' +
+            '<div class="meta">' + escapeHtml(time) + '</div>' +
+          '</div>' +
+          '<button class="icon-btn" onclick="deleteStudySlot(\'' + s.id + '\')" title="Delete">🗑️</button></div>';
+      }).join('');
+    }
+
+    function addStudySlot() {
+      const label = (document.getElementById('studySlotLabel').value || '').trim() ||
+        ('Study ' + ((state.studySlots || []).length + 1));
+      const start = (document.getElementById('studySlotStart').value || '').trim();
+      const end = (document.getElementById('studySlotEnd').value || '').trim();
+      if (!state.studySlots) state.studySlots = [];
+      state.studySlots.push({
+        id: 'ssp' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+        label: label,
+        start: start,
+        end: end,
+        isBreak: false
+      });
+      document.getElementById('studySlotLabel').value = '';
+      // nudge times for next add
+      if (end) {
+        document.getElementById('studySlotStart').value = end;
+        // +1 hour rough default left to user
+      }
+      renderStudySlots();
+      state.studyUseSchoolSlots = false;
+      syncStudySlotModeUi();
+      if (state.currentView === 'study') switchView('study');
+      showToast('Study period added');
+      pushHistory();
+    }
+
+    function deleteStudySlot(id) {
+      state.studySlots = (state.studySlots || []).filter(function (s) { return s.id !== id; });
+      state.studyAssignments = (state.studyAssignments || []).filter(function (a) { return a.slotId !== id; });
+      renderStudySlots();
+      if (state.currentView === 'study') switchView('study');
+      showToast('Study period removed');
+      pushHistory();
+    }
+
+    function copySchoolSlotsToStudy() {
+      const school = (state.slots || []).filter(function (s) { return !s.isBreak; });
+      if (!school.length) { showToast('No school teaching periods to copy'); return; }
+      if ((state.studySlots || []).length &&
+          !confirm('Replace your custom study periods with a copy of school periods?')) return;
+      state.studySlots = school.map(function (s, i) {
+        return {
+          id: 'ssp' + Date.now() + '_' + i,
+          label: s.label || ('Period ' + (i + 1)),
+          start: s.start || '',
+          end: s.end || '',
+          isBreak: false
+        };
+      });
+      state.studyUseSchoolSlots = false;
+      syncStudySlotModeUi();
+      renderStudySlots();
+      if (state.currentView === 'study') switchView('study');
+      showToast('Copied ' + state.studySlots.length + ' school periods — edit times as you like');
+      pushHistory();
+    }
+
+    function renderStudySubjects() {
+      const list = document.getElementById('studySubjectList');
+      if (!list) return;
+      const items = state.studySubjects || [];
+      if (!items.length) {
+        list.innerHTML = '<p style="color:var(--muted);font-size:0.82rem;text-align:center;padding:8px;">No study subjects yet</p>';
+        return;
+      }
+      list.innerHTML = items.map(function (s) {
+        const placed = (state.studyAssignments || []).filter(function (a) { return a.subjectId === s.id; }).length;
+        const need = s.periods || 0;
+        const ok = placed >= need && need > 0;
+        const col = ok ? '#16a34a' : (placed > 0 ? '#ca8a04' : '#64748b');
+        return '<div class="list-item">' +
+          '<div class="color-dot" style="background:' + (s.color || '#0284c7') + '"></div>' +
+          '<div class="subj-main" style="flex:1;min-width:0;">' +
+            '<div class="name">' + escapeHtml(s.name) + '</div>' +
+            '<div class="meta" style="color:' + col + ';">' + placed + '/' + need + ' periods</div>' +
+          '</div>' +
+          '<button class="icon-btn" onclick="openStudySubjectModal(\'' + s.id + '\')" title="Edit">✏️</button>' +
+          '<button class="icon-btn" onclick="deleteStudySubject(\'' + s.id + '\')" title="Delete">🗑️</button></div>';
+      }).join('');
+    }
+
+    function openStudySubjectModal(id) {
+      state.editingStudySubjectId = id || null;
+      const title = document.getElementById('studySubjectModalTitle');
+      if (title) title.textContent = id ? 'Edit study subject' : 'Add study subject';
+      const colors = getStudyColors();
+      let color = colors[0];
+      if (id) {
+        const s = (state.studySubjects || []).find(function (x) { return x.id === id; });
+        if (s) {
+          document.getElementById('studySubjName').value = s.name || '';
+          document.getElementById('studySubjPeriods').value = s.periods || 1;
+          color = s.color || color;
+        }
+      } else {
+        document.getElementById('studySubjName').value = '';
+        document.getElementById('studySubjPeriods').value = 3;
+        color = colors[(state.studySubjects || []).length % colors.length];
+      }
+      const picker = document.getElementById('studyColorPicker');
+      if (picker) {
+        picker.innerHTML = colors.map(function (c) {
+          return '<div class="color-swatch' + (c === color ? ' selected' : '') + '" style="background:' + c + '" data-color="' + c + '" onclick=\"selectStudyColor(\'' + c + '\')\"></div>';
+        }).join('');
+      }
+      document.getElementById('studySubjectModal').classList.add('open');
+      try { document.getElementById('studySubjName').focus(); } catch (e) {}
+    }
+
+    function selectStudyColor(c) {
+      document.querySelectorAll('#studyColorPicker .color-swatch').forEach(function (el) {
+        el.classList.toggle('selected', el.dataset.color === c);
+      });
+    }
+
+    function closeStudySubjectModal() {
+      const m = document.getElementById('studySubjectModal');
+      if (m) m.classList.remove('open');
+      state.editingStudySubjectId = null;
+    }
+
+    function saveStudySubject() {
+      const name = (document.getElementById('studySubjName').value || '').trim();
+      const periods = Math.max(1, parseInt(document.getElementById('studySubjPeriods').value, 10) || 1);
+      const sw = document.querySelector('#studyColorPicker .color-swatch.selected');
+      const color = (sw && sw.dataset.color) || getStudyColors()[0];
+      if (!name) { showToast('Subject name required'); return; }
+      if (!state.studySubjects) state.studySubjects = [];
+      if (state.editingStudySubjectId) {
+        const s = state.studySubjects.find(function (x) { return x.id === state.editingStudySubjectId; });
+        if (s) { s.name = name; s.periods = periods; s.color = color; }
+        showToast('Study subject updated');
+      } else {
+        state.studySubjects.push({
+          id: 'st' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          name: name,
+          periods: periods,
+          color: color
+        });
+        showToast('Study subject added');
+      }
+      closeStudySubjectModal();
+      renderStudySubjects();
+      if (state.currentView === 'study') switchView('study');
+      pushHistory();
+    }
+
+    function deleteStudySubject(id) {
+      if (!confirm('Delete this study subject and remove it from the reading timetable?')) return;
+      state.studySubjects = (state.studySubjects || []).filter(function (s) { return s.id !== id; });
+      state.studyAssignments = (state.studyAssignments || []).filter(function (a) { return a.subjectId !== id; });
+      renderStudySubjects();
+      if (state.currentView === 'study') renderTable();
+      showToast('Study subject deleted');
+      pushHistory();
+    }
+
+    function openStudyAssignModal(day, slotId) {
+      state.currentStudySlot = { day: day, slotId: slotId };
+      const slotPool = (typeof getStudySlots === 'function') ? getStudySlots() : (state.slots || []);
+      const slot = slotPool.find(function (s) { return s.id === slotId; }) ||
+        (state.slots || []).find(function (s) { return s.id === slotId; }) ||
+        (state.studySlots || []).find(function (s) { return s.id === slotId; });
+      const title = document.getElementById('studyAssignTitle');
+      if (title) title.textContent = 'Study · ' + day + (slot ? (' · ' + slot.label) : '');
+      const lab = document.getElementById('studyAssignSlotLabel');
+      if (lab) lab.textContent = (slot && slot.start && slot.end) ? (slot.start + ' – ' + slot.end) : '';
+      const sel = document.getElementById('studyAssignSubject');
+      const items = state.studySubjects || [];
+      if (!items.length) {
+        sel.innerHTML = '<option value="">Add study subjects first</option>';
+      } else {
+        sel.innerHTML = items.map(function (s) {
+          return '<option value="' + s.id + '">' + escapeHtml(s.name) + ' (' + (s.periods || 0) + '/wk)</option>';
+        }).join('');
+      }
+      const existing = (state.studyAssignments || []).find(function (a) {
+        return a.day === day && a.slotId === slotId;
+      });
+      const host = document.getElementById('studyAssignExisting');
+      if (existing) {
+        const subj = items.find(function (s) { return s.id === existing.subjectId; });
+        host.innerHTML = '<div style="padding:8px 10px;background:#f0f9ff;border-radius:8px;font-size:0.85rem;">Currently: <strong>' +
+          escapeHtml(subj ? subj.name : 'Subject') + '</strong></div>';
+        if (subj) sel.value = existing.subjectId;
+      } else {
+        host.innerHTML = '';
+      }
+      document.getElementById('studyAssignModal').classList.add('open');
+    }
+
+    function closeStudyAssignModal() {
+      const m = document.getElementById('studyAssignModal');
+      if (m) m.classList.remove('open');
+      state.currentStudySlot = null;
+    }
+
+    function saveStudyAssignment() {
+      if (!state.currentStudySlot) return;
+      const subjectId = document.getElementById('studyAssignSubject').value;
+      if (!subjectId) { showToast('Select a study subject'); return; }
+      const day = state.currentStudySlot.day;
+      const slotId = state.currentStudySlot.slotId;
+      if (!state.studyAssignments) state.studyAssignments = [];
+      const existing = state.studyAssignments.find(function (a) {
+        return a.day === day && a.slotId === slotId;
+      });
+      if (existing) {
+        existing.subjectId = subjectId;
+        showToast('Study period updated');
+      } else {
+        state.studyAssignments.push({
+          id: 'sa' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          day: day,
+          slotId: slotId,
+          subjectId: subjectId
+        });
+        showToast('Study period placed');
+      }
+      closeStudyAssignModal();
+      renderStudySubjects();
+      renderTable();
+      if (state.currentView === 'study') switchView('study');
+      pushHistory();
+    }
+
+    function clearStudyCell() {
+      if (!state.currentStudySlot) return;
+      const day = state.currentStudySlot.day;
+      const slotId = state.currentStudySlot.slotId;
+      state.studyAssignments = (state.studyAssignments || []).filter(function (a) {
+        return !(a.day === day && a.slotId === slotId);
+      });
+      closeStudyAssignModal();
+      renderStudySubjects();
+      renderTable();
+      showToast('Study cell cleared');
+      pushHistory();
+    }
+
+    function clearStudyAssignments() {
+      if (!(state.studyAssignments || []).length) { showToast('Study grid already empty'); return; }
+      if (!confirm('Clear all periods from the personal reading timetable?\\n\\nStudy subjects list will be kept.')) return;
+      state.studyAssignments = [];
+      renderStudySubjects();
+      renderTable();
+      if (state.currentView === 'study') switchView('study');
+      showToast('Study timetable cleared');
+      pushHistory();
+    }
+
+    function autoGenerateStudyTimetable() {
+      const subjects = state.studySubjects || [];
+      if (!subjects.length) {
+        showToast('Add study subjects first (Setup → Study subjects)');
+        return;
+      }
+      const days = state.days || [];
+      const slots = (typeof getStudySlots === 'function') ? getStudySlots() : (state.slots || []).filter(function (s) { return !s.isBreak; });
+      if (!days.length) {
+        showToast('Set weekdays in Settings first');
+        return;
+      }
+      if (!slots.length) {
+        showToast('Add study periods (custom) or choose “Same as school periods”');
+        return;
+      }
+      const totalNeed = subjects.reduce(function (n, s) { return n + (s.periods || 0); }, 0);
+      const capacity = days.length * slots.length;
+      if (totalNeed > capacity) {
+        alert('You need ' + totalNeed + ' periods but the week only has ' + capacity +
+          ' free slots (days × periods).\\n\\nReduce periods per subject or add more periods/days.');
+        return;
+      }
+      if (!confirm('Auto-generate personal reading timetable?\\n\\n' +
+          '• Places each study subject across the week\\n' +
+          '• Uses your period times from Settings\\n' +
+          '• Clears the current study grid first\\n\\nContinue?')) return;
+
+      state.studyAssignments = [];
+      // Build free cells in day-major order, spread subjects
+      const free = [];
+      days.forEach(function (day) {
+        slots.forEach(function (slot) {
+          free.push({ day: day, slotId: slot.id });
+        });
+      });
+      // Shuffle lightly by interleaving: take slots round-robin by day index
+      // Demand queue
+      const queue = [];
+      subjects.forEach(function (s) {
+        const n = Math.max(0, s.periods || 0);
+        for (let i = 0; i < n; i++) queue.push(s.id);
+      });
+      // Spread: assign with max gap — fill using step through free list
+      let placed = 0;
+      const used = {};
+      queue.forEach(function (subjectId, qi) {
+        // Prefer slot that keeps same subject from clustering too much: pick free[i] cycling
+        let best = -1;
+        const start = Math.floor((qi * free.length) / Math.max(1, queue.length)) % free.length;
+        for (let k = 0; k < free.length; k++) {
+          const idx = (start + k) % free.length;
+          const cell = free[idx];
+          const key = cell.day + '|' + cell.slotId;
+          if (used[key]) continue;
+          best = idx;
+          break;
+        }
+        if (best < 0) return;
+        const cell = free[best];
+        const key = cell.day + '|' + cell.slotId;
+        used[key] = true;
+        state.studyAssignments.push({
+          id: 'sa' + Date.now() + '_' + qi + '_' + Math.random().toString(36).slice(2, 5),
+          day: cell.day,
+          slotId: cell.slotId,
+          subjectId: subjectId
+        });
+        placed++;
+      });
+
+      switchView('study');
+      renderStudySubjects();
+      showToast('Study plan generated: ' + placed + ' periods placed');
+      pushHistory();
+    }
+
     // ========== EXAM / CA TIMETABLE ==========
     function getExamsForSlot(day, slotId) {
       return (state.exams || []).filter(e => e.day === day && e.slotId === slotId);
@@ -14177,11 +14776,111 @@ function switchView(view) {
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function showToast(msg) {
+    // ===== App sounds (Web Audio — no external files, works offline / PWA) =====
+    let _audioCtx = null;
+    let _audioUnlocked = false;
+
+    function isSoundEnabled() {
+      if (state && state.soundEnabled === false) return false;
+      try {
+        if (localStorage.getItem('akeemTimetableSound') === '0') return false;
+      } catch (e) {}
+      return true;
+    }
+
+    function toggleAppSound(on) {
+      state.soundEnabled = !!on;
+      try { localStorage.setItem('akeemTimetableSound', on ? '1' : '0'); } catch (e) {}
+      if (typeof autosaveNow === 'function') autosaveNow();
+      if (on) playAppSound('success');
+      else showToast('Sound off');
+    }
+
+    function syncSoundToggle() {
+      const el = document.getElementById('soundEnabledToggle');
+      if (el) el.checked = isSoundEnabled();
+    }
+
+    function unlockAudio() {
+      if (_audioUnlocked) return;
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        if (!_audioCtx) _audioCtx = new Ctx();
+        if (_audioCtx.state === 'suspended') _audioCtx.resume();
+        _audioUnlocked = true;
+      } catch (e) {}
+    }
+
+    function playAppSound(kind) {
+      if (!isSoundEnabled()) return;
+      try {
+        unlockAudio();
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        if (!_audioCtx) _audioCtx = new Ctx();
+        if (_audioCtx.state === 'suspended') _audioCtx.resume();
+        const ctx = _audioCtx;
+        const now = ctx.currentTime;
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g);
+        g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.0001, now);
+
+        if (kind === 'error' || kind === 'fail') {
+          o.type = 'triangle';
+          o.frequency.setValueAtTime(200, now);
+          o.frequency.linearRampToValueAtTime(140, now + 0.18);
+          g.gain.exponentialRampToValueAtTime(0.14, now + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+          o.start(now);
+          o.stop(now + 0.3);
+        } else if (kind === 'warn' || kind === 'clash') {
+          o.type = 'sine';
+          o.frequency.setValueAtTime(440, now);
+          o.frequency.setValueAtTime(440, now + 0.08);
+          o.frequency.setValueAtTime(330, now + 0.1);
+          g.gain.exponentialRampToValueAtTime(0.1, now + 0.015);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+          o.start(now);
+          o.stop(now + 0.24);
+        } else if (kind === 'click') {
+          o.type = 'sine';
+          o.frequency.setValueAtTime(800, now);
+          g.gain.exponentialRampToValueAtTime(0.06, now + 0.005);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+          o.start(now);
+          o.stop(now + 0.07);
+        } else {
+          // success / default — two soft rising notes
+          o.type = 'sine';
+          o.frequency.setValueAtTime(523.25, now);
+          o.frequency.setValueAtTime(659.25, now + 0.07);
+          g.gain.exponentialRampToValueAtTime(0.11, now + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+          o.start(now);
+          o.stop(now + 0.25);
+        }
+      } catch (e) {}
+    }
+
+    function showToast(msg, soundKind) {
       const t = document.getElementById('toast');
       t.textContent = msg;
       t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 2500);
+      // Auto-pick sound from message if not specified
+      if (soundKind === false || soundKind === 'none') return;
+      const m = String(msg || '').toLowerCase();
+      let kind = soundKind;
+      if (!kind) {
+        if (/cannot|failed|error|required|not found|abort|stop|blocked/.test(m)) kind = 'error';
+        else if (/clash|conflict|warning|⚠️|locked/.test(m)) kind = 'warn';
+        else if (/deleted|removed|cleared/.test(m)) kind = 'click';
+        else kind = 'success';
+      }
+      playAppSound(kind);
     }
 
     document.addEventListener('keydown', e => {
@@ -14192,6 +14891,8 @@ function switchView(view) {
         closeAssignModal();
         if (typeof closeExamModal === 'function') closeExamModal();
         if (typeof closeAutoGenModal === 'function') closeAutoGenModal();
+        if (typeof closeStudySubjectModal === 'function') closeStudySubjectModal();
+        if (typeof closeStudyAssignModal === 'function') closeStudyAssignModal();
       }
       // Undo / Redo — skip when typing in inputs
       const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
